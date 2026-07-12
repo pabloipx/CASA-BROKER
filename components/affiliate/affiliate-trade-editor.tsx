@@ -109,7 +109,7 @@ export function AffiliateTradeEditor() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 text-[#9333ea] animate-spin" />
+        <Loader2 className="w-6 h-6 text-[#2563eb] animate-spin" />
       </div>
     )
   }
@@ -196,7 +196,7 @@ export function AffiliateTradeEditor() {
                       {trade.direction === "call" ? "CALL" : "PUT"}
                     </span>
                     {trade.is_demo && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#9333ea]/15 text-[#9333ea]">DEMO</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#2563eb]/15 text-[#2563eb]">DEMO</span>
                     )}
                     {trade.is_manually_adjusted && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">EDITADO</span>

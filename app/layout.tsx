@@ -7,9 +7,9 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Kodilex Broker - Plataforma de Trading OTC",
-  description: "Negocie opções binárias OTC com a Kodilex Broker",
-  generator: "Kodilex Broker",
+  title: "CASA BROKER - Plataforma de Trading OTC",
+  description: "Negocie opções binárias OTC com a CASA BROKER",
+  generator: "CASA BROKER",
 }
 
 export const viewport: Viewport = {

@@ -111,15 +111,15 @@ function SignUpForm() {
         <div className="text-center px-6 animate-in fade-in zoom-in duration-500">
           <div
             className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(147, 51, 234, 0.2)" }}
+            style={{ backgroundColor: "rgba(37, 99, 235, 0.2)" }}
           >
-            <CheckCircle2 className="w-12 h-12" style={{ color: "#9333ea" }} />
+            <CheckCircle2 className="w-12 h-12" style={{ color: "#2563eb" }} />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Conta criada com sucesso!</h1>
           <p className="text-gray-400 mb-6">Você será redirecionado para a plataforma...</p>
           <div className="flex items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#9333ea" }} />
-            <span style={{ color: "#9333ea" }}>Entrando...</span>
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#2563eb" }} />
+            <span style={{ color: "#2563eb" }}>Entrando...</span>
           </div>
         </div>
       </div>
@@ -151,14 +151,14 @@ function SignUpForm() {
               <p className="text-xs text-gray-500">Última atualização: Janeiro de 2026</p>
 
               <p>
-                Ao acessar, cadastrar-se ou utilizar a plataforma Kodilex Broker, o usuário declara que leu, compreendeu e
+                Ao acessar, cadastrar-se ou utilizar a plataforma CASA BROKER, o usuário declara que leu, compreendeu e
                 concorda integralmente com os presentes Termos e Condições.
               </p>
 
               <h3 className="text-white font-semibold pt-2">1. DEFINIÇÕES</h3>
               <ul className="list-disc pl-5 space-y-1">
                 <li>
-                  <strong>Kodilex Broker:</strong> Plataforma digital para operações em opções binárias.
+                  <strong>CASA BROKER:</strong> Plataforma digital para operações em opções binárias.
                 </li>
                 <li>
                   <strong>Usuário:</strong> Pessoa física que acessa ou utiliza a plataforma.
@@ -178,7 +178,7 @@ function SignUpForm() {
               <p>O usuário compromete-se a fornecer informações verdadeiras e completas.</p>
 
               <h3 className="text-white font-semibold pt-2">5. VERIFICAÇÃO KYC</h3>
-              <p>A Kodilex Broker poderá solicitar documentos para verificação de identidade. Prazo de até 24 horas.</p>
+              <p>A CASA BROKER poderá solicitar documentos para verificação de identidade. Prazo de até 24 horas.</p>
 
               <h3 className="text-white font-semibold pt-2">6. DEPÓSITOS</h3>
               <p>Valor mínimo: R$ 50,00. Processamento instantâneo via PIX.</p>
@@ -187,7 +187,7 @@ function SignUpForm() {
               <p>Valor mínimo: R$ 10,00. Prazo de até 24 horas para primeiro saque.</p>
 
               <h3 className="text-white font-semibold pt-2">8. RISCOS</h3>
-              <p>Operações financeiras envolvem riscos e podem resultar em perdas. A Kodilex Broker não garante lucros.</p>
+              <p>Operações financeiras envolvem riscos e podem resultar em perdas. A CASA BROKER não garante lucros.</p>
 
               <h3 className="text-white font-semibold pt-2">9. ACEITE FINAL</h3>
               <p>Ao marcar o checkbox, o usuário declara que leu, é maior de 18 anos e concorda com todas as regras.</p>
@@ -197,7 +197,7 @@ function SignUpForm() {
               <Button
                 onClick={() => setShowTerms(false)}
                 className="w-full h-12 rounded-xl text-white font-semibold"
-                style={{ backgroundColor: "#9333ea" }}
+                style={{ backgroundColor: "#2563eb" }}
               >
                 Li e Entendi
               </Button>
@@ -210,7 +210,7 @@ function SignUpForm() {
         <Link href="/" className="flex items-center">
           <Image
             src="/images/kodilex-logo.png"
-            alt="Kodilex Broker"
+            alt="CASA BROKER"
             width={160}
             height={40}
             className="h-10 w-auto"
@@ -221,7 +221,7 @@ function SignUpForm() {
           <Button
             variant="outline"
             className="bg-transparent rounded-full px-6 h-10"
-            style={{ borderColor: "#9333ea", color: "#9333ea" }}
+            style={{ borderColor: "#2563eb", color: "#2563eb" }}
           >
             Entrar
           </Button>
@@ -237,7 +237,7 @@ function SignUpForm() {
         <form onSubmit={handleSignUp} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name" className="text-white text-sm font-medium flex items-center gap-2">
-              <User className="w-4 h-4" style={{ color: "#9333ea" }} />
+              <User className="w-4 h-4" style={{ color: "#2563eb" }} />
               Nome completo
             </Label>
             <Input
@@ -254,7 +254,7 @@ function SignUpForm() {
 
           <div className="space-y-2">
             <Label htmlFor="email" className="text-white text-sm font-medium flex items-center gap-2">
-              <Mail className="w-4 h-4" style={{ color: "#9333ea" }} />
+              <Mail className="w-4 h-4" style={{ color: "#2563eb" }} />
               E-mail
             </Label>
             <Input
@@ -271,7 +271,7 @@ function SignUpForm() {
 
           <div className="space-y-2">
             <Label htmlFor="phone" className="text-white text-sm font-medium flex items-center gap-2">
-              <Phone className="w-4 h-4" style={{ color: "#9333ea" }} />
+              <Phone className="w-4 h-4" style={{ color: "#2563eb" }} />
               Telefone
             </Label>
             <Input
@@ -288,7 +288,7 @@ function SignUpForm() {
 
           <div className="space-y-2">
             <Label htmlFor="password" className="text-white text-sm font-medium flex items-center gap-2">
-              <Lock className="w-4 h-4" style={{ color: "#9333ea" }} />
+              <Lock className="w-4 h-4" style={{ color: "#2563eb" }} />
               Senha
             </Label>
             <Input
@@ -310,8 +310,8 @@ function SignUpForm() {
               onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
               className="mt-0.5 rounded"
               style={{
-                borderColor: acceptTerms ? "#9333ea" : "#374151",
-                backgroundColor: acceptTerms ? "#9333ea" : "transparent",
+                borderColor: acceptTerms ? "#2563eb" : "#374151",
+                backgroundColor: acceptTerms ? "#2563eb" : "transparent",
               }}
             />
             <label htmlFor="terms" className="text-gray-400 text-sm leading-relaxed">
@@ -320,7 +320,7 @@ function SignUpForm() {
                 type="button"
                 onClick={() => setShowTerms(true)}
                 className="underline underline-offset-2 hover:opacity-80"
-                style={{ color: "#9333ea" }}
+                style={{ color: "#2563eb" }}
               >
                 Termos & Condições
               </button>
@@ -340,7 +340,7 @@ function SignUpForm() {
           <Button
             type="submit"
             className="w-full text-white h-14 rounded-xl font-semibold text-base mt-4 transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
-            style={{ backgroundColor: "#9333ea", boxShadow: "0 4px 14px rgba(147, 51, 234, 0.4)" }}
+            style={{ backgroundColor: "#2563eb", boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)" }}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -358,7 +358,7 @@ function SignUpForm() {
 
           <p className="text-center text-gray-400 text-sm pt-4">
             Já tem uma conta?{" "}
-            <Link href="/auth/login" className="font-semibold" style={{ color: "#9333ea" }}>
+            <Link href="/auth/login" className="font-semibold" style={{ color: "#2563eb" }}>
               Faça login
             </Link>
           </p>

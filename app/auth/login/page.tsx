@@ -80,7 +80,7 @@ export default function LoginPage() {
   if (isCheckingSession) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: "#0B0F14" }}>
-        <div className="w-10 h-10 border-2 border-[#9333ea] border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -92,7 +92,7 @@ export default function LoginPage() {
         <Link href="/" className="flex items-center">
           <Image
             src="/images/kodilex-logo.png"
-            alt="Kodilex Broker"
+            alt="CASA BROKER"
             width={160}
             height={40}
             className="h-10 w-auto"
@@ -103,7 +103,7 @@ export default function LoginPage() {
           <Button
             variant="outline"
             className="bg-transparent rounded-full px-6 h-10"
-            style={{ borderColor: "#9333ea", color: "#9333ea" }}
+            style={{ borderColor: "#2563eb", color: "#2563eb" }}
           >
             Criar conta
           </Button>
@@ -122,7 +122,7 @@ export default function LoginPage() {
           {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="email" className="text-white text-sm font-medium flex items-center gap-2">
-              <Mail className="w-4 h-4" style={{ color: "#9333ea" }} />
+              <Mail className="w-4 h-4" style={{ color: "#2563eb" }} />
               E-mail
             </Label>
             <Input
@@ -142,7 +142,7 @@ export default function LoginPage() {
           {/* Senha */}
           <div className="space-y-2">
             <Label htmlFor="password" className="text-white text-sm font-medium flex items-center gap-2">
-              <Lock className="w-4 h-4" style={{ color: "#9333ea" }} />
+              <Lock className="w-4 h-4" style={{ color: "#2563eb" }} />
               Senha
             </Label>
             <Input
@@ -161,7 +161,7 @@ export default function LoginPage() {
 
           {/* Forgot Password */}
           <div className="text-right">
-            <Link href="/auth/forgot-password" className="text-sm hover:underline" style={{ color: "#9333ea" }}>
+            <Link href="/auth/forgot-password" className="text-sm hover:underline" style={{ color: "#2563eb" }}>
               Esqueceu sua senha?
             </Link>
           </div>
@@ -181,7 +181,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             className="w-full text-white h-14 rounded-xl font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
-            style={{ backgroundColor: "#9333ea", boxShadow: "0 4px 14px rgba(147, 51, 234, 0.4)" }}
+            style={{ backgroundColor: "#2563eb", boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)" }}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -200,7 +200,7 @@ export default function LoginPage() {
           {/* Sign Up Link */}
           <p className="text-center text-gray-400 text-sm pt-4">
             Não tem uma conta?{" "}
-            <Link href="/auth/sign-up" className="font-semibold" style={{ color: "#9333ea" }}>
+            <Link href="/auth/sign-up" className="font-semibold" style={{ color: "#2563eb" }}>
               Cadastre-se grátis
             </Link>
           </p>
@@ -209,12 +209,12 @@ export default function LoginPage() {
         {/* Trust Badge */}
         <div
           className="mt-8 p-4 rounded-xl"
-          style={{ backgroundColor: "rgba(147, 51, 234, 0.1)", border: "1px solid rgba(147, 51, 234, 0.3)" }}
+          style={{ backgroundColor: "rgba(37, 99, 235, 0.1)", border: "1px solid rgba(37, 99, 235, 0.3)" }}
         >
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "#9333ea" }}
+              style={{ backgroundColor: "#2563eb" }}
             >
               <Lock className="w-5 h-5 text-white" />
             </div>

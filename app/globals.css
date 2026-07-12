@@ -4,17 +4,17 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ========================================
-   KODILEX BROKER - PALETA DE CORES (TEMA ROXO)
+   CASA BROKER - PALETA DE CORES (TEMA AZUL)
    ======================================== */
 
 /* All colors defined statically in @theme inline below */
 
 /* Remove light mode - platform is always dark */
 .dark {
-  --primary: #9333ea;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --primary-hover: #a855f7;
-  --primary-dark: #3b0764;
+  --primary-hover: #3b82f6;
+  --primary-dark: #172554;
   --background: #0b0f14;
   --foreground: #ffffff;
   --card: #121826;
@@ -31,20 +31,20 @@
   --destructive-foreground: #ffffff;
   --border: #1f2933;
   --input: #121826;
-  --ring: #9333ea;
-  --chart-1: #9333ea;
+  --ring: #2563eb;
+  --chart-1: #2563eb;
   --chart-2: #ef4444;
-  --chart-3: #a855f7;
+  --chart-3: #3b82f6;
   --chart-4: #f59e0b;
-  --chart-5: #3b0764;
-  --sidebar: #3b0764;
+  --chart-5: #172554;
+  --sidebar: #172554;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #9333ea;
+  --sidebar-primary: #2563eb;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1f2933;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #1f2933;
-  --sidebar-ring: #9333ea;
+  --sidebar-ring: #2563eb;
 }
 
 @theme inline {
@@ -56,7 +56,7 @@
   --color-card-foreground: #ffffff;
   --color-popover: #121826;
   --color-popover-foreground: #ffffff;
-  --color-primary: #9333ea;
+  --color-primary: #2563eb;
   --color-primary-foreground: #ffffff;
   --color-secondary: #1f2933;
   --color-secondary-foreground: #ffffff;
@@ -68,29 +68,29 @@
   --color-destructive-foreground: #ffffff;
   --color-border: #1f2933;
   --color-input: #121826;
-  --color-ring: #9333ea;
-  --color-chart-1: #9333ea;
+  --color-ring: #2563eb;
+  --color-chart-1: #2563eb;
   --color-chart-2: #ef4444;
-  --color-chart-3: #a855f7;
+  --color-chart-3: #3b82f6;
   --color-chart-4: #f59e0b;
-  --color-chart-5: #3b0764;
+  --color-chart-5: #172554;
   --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  --color-sidebar: #3b0764;
+  --color-sidebar: #172554;
   --color-sidebar-foreground: #ffffff;
-  --color-sidebar-primary: #9333ea;
+  --color-sidebar-primary: #2563eb;
   --color-sidebar-primary-foreground: #ffffff;
   --color-sidebar-accent: #1f2933;
   --color-sidebar-accent-foreground: #ffffff;
   --color-sidebar-border: #1f2933;
-  --color-sidebar-ring: #9333ea;
+  --color-sidebar-ring: #2563eb;
 
-  /* Custom Kodilex Broker colors */
-  --color-atlas-blue: #9333ea;
-  --color-atlas-purple-hover: #a855f7;
-  --color-atlas-purple-dark: #3b0764;
+  /* Custom CASA BROKER colors */
+  --color-atlas-blue: #2563eb;
+  --color-atlas-purple-hover: #3b82f6;
+  --color-atlas-purple-dark: #172554;
   --color-atlas-bg: #0b0f14;
   --color-atlas-card: #121826;
   --color-atlas-alt: #1f2933;
@@ -154,12 +154,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #9333ea;
+  background: #2563eb;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a855f7;
+  background: #3b82f6;
 }
 
 input[type="number"]::-webkit-inner-spin-button,

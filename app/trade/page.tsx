@@ -653,7 +653,7 @@ export default function TradePage() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0e0e0e" }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-400 text-sm">Carregando...</p>
         </div>
       </div>
@@ -764,7 +764,7 @@ export default function TradePage() {
             {/* Wallet Button */}
             <button
               onClick={() => (window.location.href = "/deposit")}
-              className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center bg-[#9333ea] hover:bg-[#a855f7] transition-all duration-200 shadow-lg shadow-[#9333ea]/20 active:scale-95 shrink-0"
+              className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center bg-[#2563eb] hover:bg-[#3b82f6] transition-all duration-200 shadow-lg shadow-[#2563eb]/20 active:scale-95 shrink-0"
             >
               <Wallet className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
             </button>
@@ -1125,7 +1125,7 @@ export default function TradePage() {
                         <p className="text-gray-400 text-xs">Opção binária</p>
                       </div>
                     </div>
-                    <span className="text-purple-500 font-semibold text-sm">{asset.payout}%</span>
+                    <span className="text-blue-500 font-semibold text-sm">{asset.payout}%</span>
                   </button>
                 ))}
               </div>
@@ -1139,7 +1139,7 @@ export default function TradePage() {
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-pulse">
           <div
             className={`px-6 py-3 rounded-xl font-bold text-white shadow-2xl ${
-              tradeResult.type === "win" ? "bg-purple-500" : "bg-red-500"
+              tradeResult.type === "win" ? "bg-blue-500" : "bg-red-500"
             }`}
           >
             {tradeResult.type === "win"

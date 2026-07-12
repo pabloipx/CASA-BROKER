@@ -98,7 +98,7 @@ interface Drawing {
   color: string
 }
 
-const DRAW_COLORS = ["#a855f7", "#00E676", "#FF5252", "#FFC400", "#38bdf8", "#e2e8f0"]
+const DRAW_COLORS = ["#3b82f6", "#00E676", "#FF5252", "#FFC400", "#38bdf8", "#e2e8f0"]
 const FIB_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
 
 const svgProps = {
@@ -1149,7 +1149,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
 
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: "#0d0d0f" }}>
-      {/* Marca d'agua Kodilex no fundo do grafico */}
+      {/* Marca d'agua CASA BROKER no fundo do grafico */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"
         style={{
@@ -1216,7 +1216,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
               onClick={() => setTool(active && dt.id !== "cursor" ? "cursor" : dt.id)}
               className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
               style={{
-                backgroundColor: active ? "#9333ea" : "transparent",
+                backgroundColor: active ? "#2563eb" : "transparent",
                 color: active ? "#fff" : "#94A3B8",
               }}
             >
