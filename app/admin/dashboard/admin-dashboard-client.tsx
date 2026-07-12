@@ -48,6 +48,14 @@ interface Stats {
   pendingKyc: number
 }
 
+// Considera o usuário online se teve atividade nos últimos 2 minutos
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000
+
+function isUserOnline(lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) return false
+  return Date.now() - new Date(lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
+}
+
 interface User {
   id: string
   email: string
@@ -56,6 +64,7 @@ interface User {
   is_blocked: boolean
   is_verified: boolean
   created_at: string
+  last_seen_at: string | null
   balance_real: number
   balance_demo: number
 }
@@ -188,6 +197,13 @@ export default function AdminDashboardClient() {
     if (isAuthenticated && activeTab === "withdrawals") fetchWithdrawals()
     if (isAuthenticated && activeTab === "kyc") fetchKyc()
     if (isAuthenticated && activeTab === "settings") fetchSettings()
+  }, [isAuthenticated, activeTab])
+
+  // Atualiza o status online dos usuários periodicamente enquanto a aba estiver aberta
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== "users") return
+    const interval = setInterval(fetchUsers, 30_000)
+    return () => clearInterval(interval)
   }, [isAuthenticated, activeTab])
 
   // Menu items
@@ -801,6 +817,15 @@ export default function AdminDashboardClient() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="text-white font-medium truncate">{user.email}</p>
+                            {isUserOnline(user.last_seen_at) && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-400 shrink-0">
+                                <span className="relative flex h-1.5 w-1.5">
+                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+                                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                                </span>
+                                online
+                              </span>
+                            )}
                             {user.is_blocked && (
                               <span className="px-2 py-0.5 bg-red-500/20 text-red-500 text-xs rounded">Bloqueado</span>
                             )}
