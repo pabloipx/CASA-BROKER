@@ -23,6 +23,7 @@ import {
   UserPlus,
   Settings,
   CandlestickChart,
+  Sliders,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +34,7 @@ import { AdminCards } from "@/components/admin/sections/admin-cards"
 import { AdminCharts } from "@/components/admin/sections/admin-charts"
 import { UsersChart, DepositsChart } from "@/components/admin/sections/tab-charts"
 import { AdminAssets } from "@/components/admin/sections/admin-assets"
+import { AdminManipulation } from "@/components/admin/sections/admin-manipulation"
 
 const ADMIN_TOKEN = "Admin123!"
 
@@ -216,6 +218,7 @@ export default function AdminDashboardClient() {
     { id: "affiliates", label: "Afiliados", icon: UserPlus },
     { id: "trades", label: "Operacoes", icon: History },
     { id: "assets", label: "Ativos", icon: CandlestickChart },
+    { id: "manipulation", label: "Manipulacao", icon: Sliders },
     { id: "cards", label: "Cartoes", icon: CreditCard },
     { id: "settings", label: "Configuracoes", icon: Settings },
   ]
@@ -1269,7 +1272,8 @@ export default function AdminDashboardClient() {
           {activeTab === "cards" && <AdminCards />}
 
           {/* Ativos Tab */}
-          {activeTab === "assets" && <AdminAssets />}
+            {activeTab === "assets" && <AdminAssets />}
+            {activeTab === "manipulation" && <AdminManipulation />}
 
           {/* Settings Tab */}
           {activeTab === "settings" && (

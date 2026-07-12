@@ -9,6 +9,8 @@ import { TraderIAModal } from "@/components/trading/trader-ia-modal"
 import { TraderIAWatermark } from "@/components/trading/trader-ia-watermark"
 import { TradeHistorySidebar } from "@/components/trading/trade-history-sidebar"
 import { useGlobalOTC } from "@/lib/hooks/use-global-otc"
+import { useManipulationSync } from "@/lib/hooks/use-manipulation-sync"
+import { multiAssetEngine } from "@/lib/price-engine/multi-asset-engine"
 import { playCallSound, playPutSound, playWinSound, playLossSound, unlockAudio } from "@/lib/sounds"
 import Image from "next/image"
 import {
@@ -165,6 +167,9 @@ export default function TradePage() {
 
   const { price, candles, isConnected } = useGlobalOTC(selectedSymbol, timeframe as 60 | 300 | 600)
 
+  // Mantem o motor de precos sincronizado com as manipulacoes agendadas pelo admin
+  useManipulationSync()
+
   const currentBalance = useMemo(() => {
     const balance = accountType === "demo" ? balanceDemo : balanceReal
     return typeof balance === "number" && !isNaN(balance) ? balance : 0
@@ -315,10 +320,13 @@ export default function TradePage() {
       if (expiredTrades.length === 0) return
 
       for (const trade of expiredTrades) {
-        // Calcula um preco de saida realista em torno do preco de entrada (movimento aleatorio).
-        // O resultado segue SEMPRE o preco real, para todos os usuarios (sem vitoria forcada).
-        const move = (Math.random() - 0.5) * 0.01 // +/- 0.5%
-        const exitPrice = trade.entry_price * (1 + move)
+        // Preco de saida vindo do MOTOR determinístico (mesmo do grafico), lido no instante
+        // de expiracao da operacao. Assim, se houver manipulacao ativa do admin para o ativo,
+        // o resultado segue a direcao configurada; caso contrario, segue o preco normal.
+        const entryMs = new Date(trade.entry_time).getTime()
+        const expiryMs = entryMs + (trade.timeframe || 60) * 1000
+        const enginePrice = multiAssetEngine.getPriceAtTime(trade.symbol, expiryMs / 1000)
+        const exitPrice = enginePrice > 0 ? enginePrice : trade.entry_price
         const isWin =
           trade.direction === "CALL" ? exitPrice > trade.entry_price : exitPrice < trade.entry_price
         const result = isWin ? "win" : "loss"
