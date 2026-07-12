@@ -218,12 +218,12 @@ export function TradingAnimation() {
 }
 
 const marketRows = [
-  { icon: Bitcoin, color: "#f7931a", name: "Bitcoin", sym: "BTC/USD", base: 67432.1 },
-  { icon: DollarSign, color: "#3b82f6", name: "Euro / Dólar", sym: "EUR/USD", base: 1.0842 },
-  { icon: TrendingUp, color: "#627eea", name: "Ethereum", sym: "ETH/USD", base: 3521.4 },
-  { icon: DollarSign, color: "#22c55e", name: "Dólar / Real", sym: "USD/BRL", base: 5.432 },
-  { icon: Bitcoin, color: "#a259ff", name: "Solana", sym: "SOL/USD", base: 172.3 },
-]
+  { icon: Bitcoin, color: "#f7931a", name: "Bitcoin", sym: "BTC/USD", base: 67432.1, initialChange: 1.24 },
+  { icon: DollarSign, color: "#3b82f6", name: "Euro / Dólar", sym: "EUR/USD", base: 1.0842, initialChange: 0.42 },
+  { icon: TrendingUp, color: "#627eea", name: "Ethereum", sym: "ETH/USD", base: 3521.4, initialChange: -0.86 },
+  { icon: DollarSign, color: "#22c55e", name: "Dólar / Real", sym: "USD/BRL", base: 5.432, initialChange: 0.31 },
+  { icon: Bitcoin, color: "#a259ff", name: "Solana", sym: "SOL/USD", base: 172.3, initialChange: -1.53 },
+  ]
 
 /**
  * Animated "market watch" panel with live-updating prices.
@@ -231,7 +231,7 @@ const marketRows = [
  */
 export function MarketWatch() {
   const [rows, setRows] = useState(() =>
-    marketRows.map((r) => ({ ...r, price: r.base, change: (Math.random() - 0.4) * 4, flash: "" })),
+    marketRows.map((r) => ({ ...r, price: r.base, change: r.initialChange, flash: "" })),
   )
 
   useEffect(() => {
