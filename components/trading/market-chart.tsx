@@ -1153,11 +1153,14 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
       <div
         className="absolute inset-0 z-0 pointer-events-none"
         style={{
-          backgroundImage: "url(/images/kodilex-watermark.png)",
+          backgroundImage: "url(/images/casa-broker-logo-watermark.png)",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center 45%",
           backgroundSize: "55% auto",
-          opacity: 0.4,
+          opacity: 0.37,
+          // A logo e preta sobre fundo branco; invertendo, os tracos ficam claros e o
+          // fundo branco vira escuro (mesclando com o fundo do grafico #0d0d0f).
+          filter: "invert(1)",
         }}
       />
       {/* Vinheta sutil para dar profundidade */}
