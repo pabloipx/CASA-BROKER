@@ -8,6 +8,25 @@ export interface AssetUIInfo {
   logo: string
 }
 
+// Cores de fundo por categoria para os selos gerados
+const BADGE_COLORS: Record<string, string> = {
+  forex: "#2563eb",
+  crypto: "#f7931a",
+  stocks: "#16a34a",
+  commodities: "#d4af37",
+}
+
+/**
+ * Gera um logo em SVG (data-URI) com as iniciais do ativo sobre um círculo colorido
+ * por categoria. Usado para os ativos que ainda não possuem imagem dedicada, evitando
+ * placeholders quebrados e mantendo o visual consistente.
+ */
+function makeBadge(initials: string, category: string): string {
+  const bg = BADGE_COLORS[category] || "#2563eb"
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="${bg}"/><text x="20" y="21" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle" dominant-baseline="central">${initials}</text></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
 /**
  * Metadados de UI (nome de exibição, categoria, payout e logo) por símbolo.
  * A fonte de verdade dos preços continua sendo OTC_ASSETS no price engine.
@@ -29,6 +48,35 @@ const ASSET_UI: Record<string, Omit<AssetUIInfo, "symbol">> = {
   PEPE_OTC: { name: "Pepe (OTC)", category: "crypto", payout: 90, logo: "/images/assets/pepe-otc.png" },
   META_OTC: { name: "Meta (OTC)", category: "stocks", payout: 92, logo: "/images/assets/meta-otc.png" },
   DOGE_OTC: { name: "DogeCoin (OTC)", category: "crypto", payout: 90, logo: "/images/assets/doge-otc.png" },
+
+  // ===== Pares abertos (mercado regular) =====
+  EURUSD: { name: "EUR/USD", category: "forex", payout: 87, logo: makeBadge("EU", "forex") },
+  EURJPY: { name: "EUR/JPY", category: "forex", payout: 87, logo: makeBadge("EJ", "forex") },
+  EURCAD: { name: "EUR/CAD", category: "forex", payout: 87, logo: makeBadge("EC", "forex") },
+  EURGBP: { name: "EUR/GBP", category: "forex", payout: 87, logo: makeBadge("EG", "forex") },
+  GBPUSD: { name: "GBP/USD", category: "forex", payout: 87, logo: makeBadge("GU", "forex") },
+  GBPJPY: { name: "GBP/JPY", category: "forex", payout: 87, logo: makeBadge("GJ", "forex") },
+  AUDCAD: { name: "AUD/CAD", category: "forex", payout: 87, logo: makeBadge("AC", "forex") },
+  AUDJPY: { name: "AUD/JPY", category: "forex", payout: 87, logo: makeBadge("AJ", "forex") },
+
+  // ===== Novos pares OTC =====
+  EURJPY_OTC: { name: "EUR/JPY (OTC)", category: "forex", payout: 92, logo: makeBadge("EJ", "forex") },
+  EURCAD_OTC: { name: "EUR/CAD (OTC)", category: "forex", payout: 92, logo: makeBadge("EC", "forex") },
+  EURGBP_OTC: { name: "EUR/GBP (OTC)", category: "forex", payout: 92, logo: makeBadge("EG", "forex") },
+  GBPJPY_OTC: { name: "GBP/JPY (OTC)", category: "forex", payout: 92, logo: makeBadge("GJ", "forex") },
+  AUDCAD_OTC: { name: "AUD/CAD (OTC)", category: "forex", payout: 92, logo: makeBadge("AC", "forex") },
+  AUDNZD_OTC: { name: "AUD/NZD (OTC)", category: "forex", payout: 92, logo: makeBadge("AN", "forex") },
+  AUDJPY_OTC: { name: "AUD/JPY (OTC)", category: "forex", payout: 92, logo: makeBadge("AJ", "forex") },
+  XAUUSD_OTC: { name: "XAU/USD (OTC)", category: "commodities", payout: 90, logo: makeBadge("AU", "commodities") },
+  SPX500_OTC: { name: "S&P 500 (OTC)", category: "stocks", payout: 90, logo: makeBadge("SP", "stocks") },
+  SNAP_OTC: { name: "Snap (OTC)", category: "stocks", payout: 92, logo: makeBadge("SN", "stocks") },
+  AAPL_OTC: { name: "Apple (OTC)", category: "stocks", payout: 92, logo: makeBadge("AA", "stocks") },
+  GOOGL_OTC: { name: "Google (OTC)", category: "stocks", payout: 92, logo: makeBadge("GO", "stocks") },
+  FB_OTC: { name: "Facebook (OTC)", category: "stocks", payout: 92, logo: makeBadge("FB", "stocks") },
+  INTC_OTC: { name: "Intel (OTC)", category: "stocks", payout: 92, logo: makeBadge("IN", "stocks") },
+  AXP_OTC: { name: "Amex (OTC)", category: "stocks", payout: 92, logo: makeBadge("AX", "stocks") },
+  ADAUSD_OTC: { name: "Cardano (OTC)", category: "crypto", payout: 90, logo: makeBadge("AD", "crypto") },
+  SOLUSD_OTC: { name: "Solana (OTC)", category: "crypto", payout: 90, logo: makeBadge("SO", "crypto") },
 }
 
 const FALLBACK_LOGO = "/placeholder.svg"

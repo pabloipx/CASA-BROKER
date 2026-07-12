@@ -47,6 +47,35 @@ export const OTC_ASSETS: OTCAsset[] = [
   { symbol: "PEPE_OTC", name: "Pepe OTC", basePrice: 0.0000118, pipSize: 0.0000001, volatility: 160, icon: "PEPE", decimals: 8 },
   { symbol: "META_OTC", name: "Meta OTC", basePrice: 482.3, pipSize: 0.01, volatility: 65, icon: "META", decimals: 2 },
   { symbol: "DOGE_OTC", name: "DogeCoin OTC", basePrice: 0.162, pipSize: 0.00001, volatility: 135, icon: "DOGE", decimals: 5 },
+
+  // ===== Pares abertos (mercado regular) =====
+  { symbol: "EURUSD", name: "EUR/USD", basePrice: 1.085, pipSize: 0.00001, volatility: 35, icon: "EU", decimals: 5 },
+  { symbol: "EURJPY", name: "EUR/JPY", basePrice: 162.3, pipSize: 0.001, volatility: 38, icon: "EJ", decimals: 3 },
+  { symbol: "EURCAD", name: "EUR/CAD", basePrice: 1.472, pipSize: 0.00001, volatility: 34, icon: "EC", decimals: 5 },
+  { symbol: "EURGBP", name: "EUR/GBP", basePrice: 0.857, pipSize: 0.00001, volatility: 30, icon: "EG", decimals: 5 },
+  { symbol: "GBPUSD", name: "GBP/USD", basePrice: 1.265, pipSize: 0.00001, volatility: 40, icon: "GU", decimals: 5 },
+  { symbol: "GBPJPY", name: "GBP/JPY", basePrice: 189.2, pipSize: 0.001, volatility: 42, icon: "GJ", decimals: 3 },
+  { symbol: "AUDCAD", name: "AUD/CAD", basePrice: 0.895, pipSize: 0.00001, volatility: 32, icon: "AC", decimals: 5 },
+  { symbol: "AUDJPY", name: "AUD/JPY", basePrice: 97.9, pipSize: 0.001, volatility: 36, icon: "AJ", decimals: 3 },
+
+  // ===== Novos pares OTC =====
+  { symbol: "EURJPY_OTC", name: "EUR/JPY OTC", basePrice: 162.3, pipSize: 0.001, volatility: 38, icon: "EJ", decimals: 3 },
+  { symbol: "EURCAD_OTC", name: "EUR/CAD OTC", basePrice: 1.472, pipSize: 0.00001, volatility: 34, icon: "EC", decimals: 5 },
+  { symbol: "EURGBP_OTC", name: "EUR/GBP OTC", basePrice: 0.857, pipSize: 0.00001, volatility: 30, icon: "EG", decimals: 5 },
+  { symbol: "GBPJPY_OTC", name: "GBP/JPY OTC", basePrice: 189.2, pipSize: 0.001, volatility: 42, icon: "GJ", decimals: 3 },
+  { symbol: "AUDCAD_OTC", name: "AUD/CAD OTC", basePrice: 0.895, pipSize: 0.00001, volatility: 32, icon: "AC", decimals: 5 },
+  { symbol: "AUDNZD_OTC", name: "AUD/NZD OTC", basePrice: 1.086, pipSize: 0.00001, volatility: 31, icon: "AN", decimals: 5 },
+  { symbol: "AUDJPY_OTC", name: "AUD/JPY OTC", basePrice: 97.9, pipSize: 0.001, volatility: 36, icon: "AJ", decimals: 3 },
+  { symbol: "XAUUSD_OTC", name: "XAU/USD OTC", basePrice: 2350.0, pipSize: 0.01, volatility: 70, icon: "XAU", decimals: 2 },
+  { symbol: "SPX500_OTC", name: "S&P 500 OTC", basePrice: 5200.0, pipSize: 0.1, volatility: 55, icon: "SPX", decimals: 2 },
+  { symbol: "SNAP_OTC", name: "Snap OTC", basePrice: 11.2, pipSize: 0.01, volatility: 80, icon: "SNAP", decimals: 2 },
+  { symbol: "AAPL_OTC", name: "Apple OTC", basePrice: 185.0, pipSize: 0.01, volatility: 60, icon: "AAPL", decimals: 2 },
+  { symbol: "GOOGL_OTC", name: "Google OTC", basePrice: 168.0, pipSize: 0.01, volatility: 60, icon: "GOOG", decimals: 2 },
+  { symbol: "FB_OTC", name: "Facebook OTC", basePrice: 482.0, pipSize: 0.01, volatility: 65, icon: "FB", decimals: 2 },
+  { symbol: "INTC_OTC", name: "Intel OTC", basePrice: 30.5, pipSize: 0.01, volatility: 72, icon: "INTC", decimals: 2 },
+  { symbol: "AXP_OTC", name: "Amex OTC", basePrice: 240.0, pipSize: 0.01, volatility: 58, icon: "AXP", decimals: 2 },
+  { symbol: "ADAUSD_OTC", name: "Cardano OTC", basePrice: 0.45, pipSize: 0.0001, volatility: 115, icon: "ADA", decimals: 4 },
+  { symbol: "SOLUSD_OTC", name: "Solana OTC", basePrice: 145.0, pipSize: 0.01, volatility: 130, icon: "SOL", decimals: 2 },
 ]
 
 // =============================================
