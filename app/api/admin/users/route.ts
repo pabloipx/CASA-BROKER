@@ -42,6 +42,7 @@ export async function GET(request: Request) {
       is_verified: u.is_verified || false,
       is_admin: u.is_admin || false,
       created_at: u.created_at,
+      last_seen_at: u.last_seen_at || null,
       balance_real: u.user_balances?.[0]?.balance_real || 0,
       balance_demo: u.user_balances?.[0]?.balance_demo || 0,
     }))
