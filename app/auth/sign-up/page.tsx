@@ -3,14 +3,11 @@
 import type React from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect, Suspense } from "react"
-import { CheckCircle2, User, Mail, Phone, Lock, ArrowRight, Loader2, X } from "lucide-react"
+import { CheckCircle2, Loader2, X } from "lucide-react"
 
 function SignUpForm() {
   const [fullName, setFullName] = useState("")
@@ -64,7 +61,6 @@ function SignUpForm() {
     }
 
     try {
-      // Call server-side API that creates user with auto-confirmed email
       const res = await fetch("/api/auth/sign-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,7 +73,6 @@ function SignUpForm() {
         throw new Error(result.error || "Erro ao criar conta")
       }
 
-      // User is created and confirmed - now sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -107,19 +102,16 @@ function SignUpForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: "#0B0F14" }}>
+      <div className="min-h-screen w-full flex items-center justify-center bg-white">
         <div className="text-center px-6 animate-in fade-in zoom-in duration-500">
-          <div
-            className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(37, 99, 235, 0.2)" }}
-          >
-            <CheckCircle2 className="w-12 h-12" style={{ color: "#2563eb" }} />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center bg-[#2563eb]/10">
+            <CheckCircle2 className="w-12 h-12 text-[#2563eb]" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Conta criada com sucesso!</h1>
-          <p className="text-gray-400 mb-6">Você será redirecionado para a plataforma...</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Conta criada com sucesso!</h1>
+          <p className="text-gray-500 mb-6">Você será redirecionado para a plataforma...</p>
           <div className="flex items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#2563eb" }} />
-            <span style={{ color: "#2563eb" }}>Entrando...</span>
+            <Loader2 className="w-5 h-5 animate-spin text-[#2563eb]" />
+            <span className="text-[#2563eb]">Entrando...</span>
           </div>
         </div>
       </div>
@@ -127,35 +119,28 @@ function SignUpForm() {
   }
 
   return (
-    <div className="min-h-screen w-full" style={{ backgroundColor: "#0B0F14" }}>
+    <div className="min-h-screen w-full flex flex-col bg-white text-gray-900">
       {showTerms && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.8)" }}
-        >
-          <div
-            className="relative w-full max-w-lg max-h-[85vh] rounded-2xl overflow-hidden flex flex-col"
-            style={{ backgroundColor: "#1a2332" }}
-          >
-            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "#2a3442" }}>
-              <h2 className="text-lg font-bold text-white">Termos e Condições de Uso</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="relative w-full max-w-lg max-h-[85vh] rounded-2xl overflow-hidden flex flex-col bg-white shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-bold text-gray-900">Termos e Condições de Uso</h2>
               <button
                 onClick={() => setShowTerms(false)}
-                className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Fechar"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 text-gray-300 text-sm leading-relaxed space-y-4">
-              <p className="text-xs text-gray-500">Última atualização: Janeiro de 2026</p>
-
+            <div className="flex-1 overflow-y-auto p-4 text-gray-600 text-sm leading-relaxed space-y-4">
+              <p className="text-xs text-gray-400">Última atualização: Janeiro de 2026</p>
               <p>
                 Ao acessar, cadastrar-se ou utilizar a plataforma CASA BROKER, o usuário declara que leu, compreendeu e
                 concorda integralmente com os presentes Termos e Condições.
               </p>
-
-              <h3 className="text-white font-semibold pt-2">1. DEFINIÇÕES</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">1. DEFINIÇÕES</h3>
               <ul className="list-disc pl-5 space-y-1">
                 <li>
                   <strong>CASA BROKER:</strong> Plataforma digital para operações em opções binárias.
@@ -167,37 +152,28 @@ function SignUpForm() {
                   <strong>Conta:</strong> Cadastro individual do usuário na plataforma.
                 </li>
               </ul>
-
-              <h3 className="text-white font-semibold pt-2">2. ACEITAÇÃO DOS TERMOS</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">2. ACEITAÇÃO DOS TERMOS</h3>
               <p>O uso da plataforma está condicionado à aceitação integral destes Termos e Condições.</p>
-
-              <h3 className="text-white font-semibold pt-2">3. ELEGIBILIDADE</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">3. ELEGIBILIDADE</h3>
               <p>A utilização é exclusiva para pessoas maiores de 18 anos.</p>
-
-              <h3 className="text-white font-semibold pt-2">4. CADASTRO</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">4. CADASTRO</h3>
               <p>O usuário compromete-se a fornecer informações verdadeiras e completas.</p>
-
-              <h3 className="text-white font-semibold pt-2">5. VERIFICAÇÃO KYC</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">5. VERIFICAÇÃO KYC</h3>
               <p>A CASA BROKER poderá solicitar documentos para verificação de identidade. Prazo de até 24 horas.</p>
-
-              <h3 className="text-white font-semibold pt-2">6. DEPÓSITOS</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">6. DEPÓSITOS</h3>
               <p>Valor mínimo: R$ 50,00. Processamento instantâneo via PIX.</p>
-
-              <h3 className="text-white font-semibold pt-2">7. SAQUES</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">7. SAQUES</h3>
               <p>Valor mínimo: R$ 10,00. Prazo de até 24 horas para primeiro saque.</p>
-
-              <h3 className="text-white font-semibold pt-2">8. RISCOS</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">8. RISCOS</h3>
               <p>Operações financeiras envolvem riscos e podem resultar em perdas. A CASA BROKER não garante lucros.</p>
-
-              <h3 className="text-white font-semibold pt-2">9. ACEITE FINAL</h3>
+              <h3 className="text-gray-900 font-semibold pt-2">9. ACEITE FINAL</h3>
               <p>Ao marcar o checkbox, o usuário declara que leu, é maior de 18 anos e concorda com todas as regras.</p>
             </div>
 
-            <div className="p-4 border-t" style={{ borderColor: "#2a3442" }}>
+            <div className="p-4 border-t border-gray-200">
               <Button
                 onClick={() => setShowTerms(false)}
-                className="w-full h-12 rounded-xl text-white font-semibold"
-                style={{ backgroundColor: "#2563eb" }}
+                className="w-full h-12 rounded-lg text-white font-semibold bg-[#2563eb] hover:bg-[#1d4ed8]"
               >
                 Li e Entendi
               </Button>
@@ -206,166 +182,140 @@ function SignUpForm() {
         </div>
       )}
 
-      <header className="flex items-center justify-between px-5 py-4">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <Link href="/" className="flex items-center">
           <Image
             src="/images/kodilex-logo.png"
             alt="CASA BROKER"
             width={160}
             height={40}
-            className="h-10 w-auto"
+            className="h-9 w-auto"
             unoptimized
           />
         </Link>
         <Link href="/auth/login">
-          <Button
-            variant="outline"
-            className="bg-transparent rounded-full px-6 h-10"
-            style={{ borderColor: "#2563eb", color: "#2563eb" }}
-          >
-            Entrar
+          <Button className="rounded-md px-5 h-10 text-white font-medium bg-[#2563eb] hover:bg-[#1d4ed8]">
+            Entrar — CASA BROKER
           </Button>
         </Link>
       </header>
 
-      <div className="px-5 pt-2 pb-4">
-        <h1 className="text-2xl font-bold text-white mb-1">Crie sua conta</h1>
-        <p className="text-gray-400 text-sm">Comece a operar em menos de 1 minuto</p>
-      </div>
+      {/* Main */}
+      <main className="flex-1 flex items-start justify-center px-6 py-14">
+        <div className="w-full max-w-md">
+          <h1 className="text-4xl font-bold text-center text-gray-800 mb-10">Criar conta</h1>
 
-      <div className="px-5 pb-8">
-        <form onSubmit={handleSignUp} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-white text-sm font-medium flex items-center gap-2">
-              <User className="w-4 h-4" style={{ color: "#2563eb" }} />
-              Nome completo
-            </Label>
-            <Input
-              id="name"
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <input
               type="text"
-              placeholder="Digite seu nome"
+              placeholder="Nome completo"
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="text-white placeholder:text-gray-500 h-12 rounded-xl border-0 focus:ring-2"
-              style={{ backgroundColor: "#1a2332", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)" }}
+              className="w-full h-14 px-4 rounded-md border border-gray-300 text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb] transition-colors"
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-white text-sm font-medium flex items-center gap-2">
-              <Mail className="w-4 h-4" style={{ color: "#2563eb" }} />
-              E-mail
-            </Label>
-            <Input
-              id="email"
+            <input
               type="email"
-              placeholder="Digite seu e-mail"
+              placeholder="E-mail"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="text-white placeholder:text-gray-500 h-12 rounded-xl border-0 focus:ring-2"
-              style={{ backgroundColor: "#1a2332", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)" }}
+              className="w-full h-14 px-4 rounded-md border border-gray-300 text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb] transition-colors"
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="text-white text-sm font-medium flex items-center gap-2">
-              <Phone className="w-4 h-4" style={{ color: "#2563eb" }} />
-              Telefone
-            </Label>
-            <Input
-              id="phone"
+            <input
               type="tel"
-              placeholder="(99) 99999-9999"
+              placeholder="Telefone"
               required
               value={phone}
               onChange={handlePhoneChange}
-              className="text-white placeholder:text-gray-500 h-12 rounded-xl border-0 focus:ring-2"
-              style={{ backgroundColor: "#1a2332", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)" }}
+              className="w-full h-14 px-4 rounded-md border border-gray-300 text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb] transition-colors"
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-white text-sm font-medium flex items-center gap-2">
-              <Lock className="w-4 h-4" style={{ color: "#2563eb" }} />
-              Senha
-            </Label>
-            <Input
-              id="password"
+            <input
               type="password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Senha"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="text-white placeholder:text-gray-500 h-12 rounded-xl border-0 focus:ring-2"
-              style={{ backgroundColor: "#1a2332", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)" }}
+              className="w-full h-14 px-4 rounded-md border border-gray-300 text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb] transition-colors"
             />
-          </div>
 
-          <div className="flex items-start gap-3 pt-2">
-            <Checkbox
-              id="terms"
-              checked={acceptTerms}
-              onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
-              className="mt-0.5 rounded"
-              style={{
-                borderColor: acceptTerms ? "#2563eb" : "#374151",
-                backgroundColor: acceptTerms ? "#2563eb" : "transparent",
-              }}
-            />
-            <label htmlFor="terms" className="text-gray-400 text-sm leading-relaxed">
-              Tenho mais de 18 anos e concordo com os{" "}
-              <button
-                type="button"
-                onClick={() => setShowTerms(true)}
-                className="underline underline-offset-2 hover:opacity-80"
-                style={{ color: "#2563eb" }}
-              >
-                Termos & Condições
-              </button>
+            <label className="flex items-start gap-3 pt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[#2563eb]"
+              />
+              <span className="text-gray-500 text-sm leading-relaxed">
+                Tenho mais de 18 anos e concordo com os{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="text-[#2563eb] underline underline-offset-2 hover:opacity-80"
+                >
+                  Termos &amp; Condições
+                </button>
+              </span>
             </label>
-          </div>
 
-          {error && (
-            <div
-              className="text-sm p-3 rounded-xl flex items-center gap-2"
-              style={{ color: "#EF4444", backgroundColor: "rgba(239, 68, 68, 0.1)" }}
-            >
-              <span className="text-red-500">⚠</span>
-              {error}
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full text-white h-14 rounded-xl font-semibold text-base mt-4 transition-all duration-200 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
-            style={{ backgroundColor: "#2563eb", boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)" }}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Criando conta...
-              </>
-            ) : (
-              <>
-                Criar conta grátis
-                <ArrowRight className="w-5 h-5" />
-              </>
+            {error && (
+              <div className="text-sm p-3 rounded-md flex items-center gap-2 text-red-600 bg-red-50 border border-red-100">
+                <span>⚠</span>
+                {error}
+              </div>
             )}
-          </Button>
 
-          <p className="text-center text-gray-400 text-sm pt-4">
-            Já tem uma conta?{" "}
-            <Link href="/auth/login" className="font-semibold" style={{ color: "#2563eb" }}>
-              Faça login
+            <Button
+              type="submit"
+              className="w-full h-14 rounded-md font-semibold text-base text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Criando conta...
+                </span>
+              ) : (
+                "Criar conta"
+              )}
+            </Button>
+          </form>
+
+          <p className="text-center text-gray-600 text-sm mt-6">
+            Já possui uma conta?{" "}
+            <Link href="/auth/login" className="text-[#2563eb] font-medium hover:underline">
+              Entrar
             </Link>
           </p>
-        </form>
-      </div>
+
+          {/* Risk warning */}
+          <div className="mt-8 border border-gray-200 rounded-md px-5 py-4">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <span className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-bold tracking-wide text-gray-500">AVISO DE RISCO:</span>
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+            <p className="text-sm text-gray-500 text-center leading-relaxed">
+              Toda negociação envolve risco. Apenas arrisque o capital que você está preparado para perder.
+            </p>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">CASA BROKER</footer>
     </div>
   )
 }
 
-export default SignUpForm
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
+  )
+}
