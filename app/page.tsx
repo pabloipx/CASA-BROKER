@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Faq } from "@/components/landing/faq"
+import { TradingAnimation, MarketWatch } from "@/components/landing/trading-animation"
+import { ScrollReveal } from "@/components/landing/scroll-reveal"
 import {
   Shield,
   Zap,
@@ -160,13 +162,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Hero image */}
-        <div className="relative z-10 max-w-5xl mx-auto px-6 pb-8">
-          <img
-            src="/images/hero-3d-candles.png"
-            alt="Gráfico de velas em 3D representando negociações na CASA BROKER"
-            className="w-full h-auto object-contain drop-shadow-[0_20px_80px_rgba(37,99,235,0.3)]"
-          />
+        {/* Hero animated chart */}
+        <div className="relative z-10 max-w-4xl mx-auto px-6 pb-8">
+          <TradingAnimation />
         </div>
       </section>
 
@@ -177,9 +175,10 @@ export default function HomePage() {
             Desfrute de conforto em todas as negociações
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {comforts.map((item) => (
-              <div
+            {comforts.map((item, i) => (
+              <ScrollReveal
                 key={item.title}
+                delay={i * 100}
                 className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all hover:border-[#2563eb]/40 hover:bg-[#2563eb]/[0.04]"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#2563eb]/10 ring-1 ring-[#2563eb]/20 transition-colors group-hover:bg-[#2563eb]/20">
@@ -187,7 +186,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-white font-semibold mb-2">{item.title}</h3>
                 <p className="text-white/50 text-sm leading-relaxed">{item.desc}</p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -205,9 +204,11 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {assets.map((asset) => (
-              <div
+            {assets.map((asset, i) => (
+              <ScrollReveal
                 key={asset.pair}
+                delay={i * 100}
+                from="scale"
                 className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all hover:border-[#2563eb]/40"
               >
                 <div className="flex items-center justify-between mb-4">
@@ -240,7 +241,7 @@ export default function HomePage() {
                 >
                   <Link href="/auth/sign-up">Investir agora</Link>
                 </Button>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -249,7 +250,7 @@ export default function HomePage() {
       {/* Qualquer dispositivo */}
       <section className="py-16 px-4 bg-[#030712]">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
-          <div>
+          <ScrollReveal from="right">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-balance">
               Negocie a qualquer hora, em qualquer dispositivo
             </h2>
@@ -276,15 +277,10 @@ export default function HomePage() {
             >
               <Link href="/auth/sign-up">Abrir plataforma</Link>
             </Button>
-          </div>
-          <div className="relative">
-            <div className="absolute inset-0 bg-[#2563eb]/20 blur-[100px] rounded-full" />
-            <img
-              src="/images/hero-3d-candles.png"
-              alt="Plataforma de negociação CASA BROKER em diferentes dispositivos"
-              className="relative w-full h-auto object-contain"
-            />
-          </div>
+          </ScrollReveal>
+          <ScrollReveal from="left" delay={150}>
+            <MarketWatch />
+          </ScrollReveal>
         </div>
       </section>
 
@@ -295,9 +291,10 @@ export default function HomePage() {
             Encontre tudo o que você precisa na CASA BROKER
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tools.map((item) => (
-              <div
+            {tools.map((item, i) => (
+              <ScrollReveal
                 key={item.title}
+                delay={(i % 3) * 100}
                 className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all hover:border-[#2563eb]/40 hover:bg-[#2563eb]/[0.04]"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#2563eb]/10 ring-1 ring-[#2563eb]/20 transition-colors group-hover:bg-[#2563eb]/20">
@@ -305,7 +302,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-white font-semibold mb-2">{item.title}</h3>
                 <p className="text-white/50 text-sm leading-relaxed">{item.desc}</p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -318,9 +315,11 @@ export default function HomePage() {
             Oferecemos bônus para mantê-lo aquecido
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {bonuses.map((item) => (
-              <div
+            {bonuses.map((item, i) => (
+              <ScrollReveal
                 key={item.title}
+                delay={i * 100}
+                from="up"
                 className="rounded-2xl border border-[#2563eb]/20 bg-gradient-to-b from-[#0e1a33] to-[#0e1a33]/30 p-6 transition-all hover:border-[#2563eb]/50"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#2563eb]/15 ring-1 ring-[#2563eb]/30">
@@ -328,7 +327,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-white font-semibold mb-2">{item.title}</h3>
                 <p className="text-white/50 text-sm leading-relaxed">{item.desc}</p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
           <div className="text-center mt-8">
@@ -351,14 +350,14 @@ export default function HomePage() {
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
             {steps.map((step, i) => (
-              <div key={step.title} className="relative text-center">
+              <ScrollReveal key={step.title} delay={i * 150} from="scale" className="relative text-center">
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#2563eb]/10 ring-1 ring-[#2563eb]/30">
                   <step.icon className="h-8 w-8 text-[#3b82f6]" />
                 </div>
                 <div className="mb-2 text-[#3b82f6] font-bold text-sm">Passo {i + 1}</div>
                 <h3 className="text-white font-semibold mb-2">{step.title}</h3>
                 <p className="text-white/50 text-sm leading-relaxed max-w-xs mx-auto">{step.desc}</p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -371,11 +370,16 @@ export default function HomePage() {
             { value: "R$ 10", label: "Depósito mínimo" },
             { value: "Minutos", label: "Retiradas rápidas via PIX" },
             { value: "Segundos", label: "Lucros em operações rápidas" },
-          ].map((s) => (
-            <div key={s.label} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+          ].map((s, i) => (
+            <ScrollReveal
+              key={s.label}
+              delay={i * 120}
+              from="up"
+              className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6"
+            >
               <p className="text-3xl md:text-4xl font-bold text-[#3b82f6]">{s.value}</p>
               <p className="text-white/50 text-sm mt-2">{s.label}</p>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </section>
