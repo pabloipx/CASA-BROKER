@@ -80,6 +80,13 @@ class AmploPayClient {
     console.log(`[v0] AmploPay response ${res.status}:`, JSON.stringify(data).slice(0, 500))
 
     if (!res.ok) {
+      // Credenciais rejeitadas pelo gateway: mensagem clara para o operador do site.
+      if (res.status === 401 || data.errorCode === "GATEWAY_INVALID_CREDENTIALS") {
+        throw new Error(
+          "Falha na integracao de pagamento: as credenciais da AmploPay sao invalidas. " +
+            "Verifique se AMPLOPAY_PUBLIC_KEY_V2 e AMPLOPAY_SECRET_KEY_V2 sao o par correto da mesma conta.",
+        )
+      }
       const msg = data.message || data.errorCode || `HTTP ${res.status}`
       throw new Error(`AmploPay erro (${data.errorCode || res.status}): ${msg}`)
     }
