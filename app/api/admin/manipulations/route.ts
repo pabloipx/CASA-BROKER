@@ -42,12 +42,16 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const { symbol, direction, start_at, end_at } = body
+    const intensity = body.intensity || "MEDIUM"
 
     if (typeof symbol !== "string" || !ASSET_CATALOG.some((a) => a.symbol === symbol)) {
       return NextResponse.json({ error: "Ativo inválido" }, { status: 400 })
     }
     if (direction !== "UP" && direction !== "DOWN") {
       return NextResponse.json({ error: "Direção inválida" }, { status: 400 })
+    }
+    if (!["SOFT", "MEDIUM", "STRONG"].includes(intensity)) {
+      return NextResponse.json({ error: "Intensidade inválida" }, { status: 400 })
     }
     const start = new Date(start_at)
     const end = new Date(end_at)
@@ -61,6 +65,7 @@ export async function POST(request: Request) {
       .insert({
         symbol,
         direction,
+        intensity,
         start_at: start.toISOString(),
         end_at: end.toISOString(),
         active: true,

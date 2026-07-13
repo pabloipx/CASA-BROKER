@@ -9,10 +9,13 @@ import { ASSET_CATALOG } from "@/lib/asset-catalog"
 
 const ADMIN_TOKEN = "Admin123!"
 
+type Intensity = "SOFT" | "MEDIUM" | "STRONG"
+
 interface Manipulation {
   id: string
   symbol: string
   direction: "UP" | "DOWN"
+  intensity: Intensity
   start_at: string
   end_at: string
   active: boolean
@@ -25,6 +28,17 @@ const DURATION_PRESETS = [
   { label: "2 min", seconds: 120 },
   { label: "5 min", seconds: 300 },
 ]
+
+// 3 tipos de movimento: quanto maior a intensidade, mais agressiva a vela.
+const INTENSITY_OPTIONS: { value: Intensity; label: string; desc: string }[] = [
+  { value: "SOFT", label: "Suave", desc: "Movimento leve e gradual" },
+  { value: "MEDIUM", label: "Médio", desc: "Movimento firme e visível" },
+  { value: "STRONG", label: "Forte", desc: "Movimento agressivo e rápido" },
+]
+
+function intensityLabel(v?: Intensity) {
+  return INTENSITY_OPTIONS.find((o) => o.value === (v || "MEDIUM"))?.label || "Médio"
+}
 
 // datetime-local usa horario LOCAL; convertemos considerando o offset do fuso.
 function toLocalInputValue(date: Date): string {
@@ -61,6 +75,7 @@ export function AdminManipulation() {
   // Formulario
   const [symbol, setSymbol] = useState(ASSET_CATALOG[0]?.symbol || "")
   const [direction, setDirection] = useState<"UP" | "DOWN">("UP")
+  const [intensity, setIntensity] = useState<Intensity>("MEDIUM")
   const [startAt, setStartAt] = useState(() => toLocalInputValue(new Date(Date.now() + 60_000)))
   const [durationSeconds, setDurationSeconds] = useState(60)
 
@@ -95,6 +110,7 @@ export function AdminManipulation() {
         body: JSON.stringify({
           symbol,
           direction,
+          intensity,
           start_at: start.toISOString(),
           end_at: end.toISOString(),
         }),
@@ -233,6 +249,35 @@ export function AdminManipulation() {
           </button>
         </div>
 
+        {/* Intensidade do movimento */}
+        <label className="mb-1.5 block text-xs font-medium text-gray-400">Tipo de movimento</label>
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          {INTENSITY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setIntensity(opt.value)}
+              className={`flex flex-col items-center gap-1 rounded-xl border p-3 text-center transition-all ${
+                intensity === opt.value
+                  ? "border-blue-500 bg-blue-500/10"
+                  : "border-white/[0.06] bg-[#0a0e16] hover:border-white/20"
+              }`}
+            >
+              <div className="flex items-center gap-0.5">
+                <Zap
+                  className={`h-4 w-4 ${intensity === opt.value ? "text-blue-400" : "text-gray-500"}`}
+                />
+                {opt.value === "STRONG" && (
+                  <Zap className={`h-4 w-4 ${intensity === opt.value ? "text-blue-400" : "text-gray-500"}`} />
+                )}
+              </div>
+              <span className={`text-sm font-semibold ${intensity === opt.value ? "text-white" : "text-gray-400"}`}>
+                {opt.label}
+              </span>
+              <span className="text-[10px] leading-tight text-gray-500">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Horario de inicio */}
         <label className="mb-1.5 block text-xs font-medium text-gray-400">Horário de início</label>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row">
@@ -341,6 +386,9 @@ export function AdminManipulation() {
                     </span>
                     <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${status.className}`}>
                       {status.label}
+                    </span>
+                    <span className="inline-flex items-center gap-0.5 rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-bold text-blue-400">
+                      <Zap className="h-3 w-3" /> {intensityLabel(m.intensity)}
                     </span>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-gray-500">

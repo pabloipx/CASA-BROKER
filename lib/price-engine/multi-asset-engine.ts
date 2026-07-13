@@ -129,11 +129,21 @@ const PRICE_OCTAVE_TOTAL = PRICE_OCTAVES.reduce((s, o) => s + o.amp, 0)
 // um vies (bias) crescente sobre o preco deterministico. Como TODO o app (grafico e
 // liquidacao de operacoes) le o preco por esta mesma funcao, o resultado Win/Loss segue
 // a direcao configurada automaticamente.
+export type ManipulationIntensity = "SOFT" | "MEDIUM" | "STRONG"
+
 export interface CandleManipulation {
   symbol: string
   direction: "UP" | "DOWN"
   startMs: number
   endMs: number
+  intensity?: ManipulationIntensity
+}
+
+// Multiplicador de forca por intensidade. Quanto maior, mais agressivo o movimento da vela.
+const INTENSITY_MULTIPLIER: Record<ManipulationIntensity, number> = {
+  SOFT: 1.4,
+  MEDIUM: 2.5,
+  STRONG: 4.0,
 }
 
 let ACTIVE_MANIPULATIONS: CandleManipulation[] = []
@@ -186,7 +196,8 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
     // garantindo um movimento direcional forte e continuo (vela cheia pra cima/baixo).
     const progress = Math.min(1, Math.max(0, (timestamp * 1000 - manip.startMs) / dur))
     const eased = progress * progress * (3 - 2 * progress) // smoothstep
-    const strength = asset.basePrice * bandPct * 2.5 * eased
+    const mult = INTENSITY_MULTIPLIER[manip.intensity || "MEDIUM"]
+    const strength = asset.basePrice * bandPct * mult * eased
     price += manip.direction === "UP" ? strength : -strength
     if (price <= 0) price = asset.basePrice * 0.5
   }
