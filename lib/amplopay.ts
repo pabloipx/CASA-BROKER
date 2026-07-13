@@ -7,15 +7,21 @@
  */
 
 const BASE_URL = process.env.AMPLOPAY_BASE_URL || "https://app.amplopay.com/api/v1"
-// Chave Pública (Client ID) e Chave Privada (Client Secret) DEVEM formar um PAR VÁLIDO
-// da MESMA conta AmploPay. Ambas sao lidas do ambiente. A pública tem um fallback fixo
-// apenas por compatibilidade, mas o ideal e configurar AMPLOPAY_PUBLIC_KEY_V2 junto com
-// AMPLOPAY_SECRET_KEY_V2 usando as duas chaves copiadas do mesmo lugar no painel.
+
+// Chave Secreta (Client Secret): usa a V2 e cai para a v1 caso a V2 nao esteja definida.
+const SECRET_KEY = process.env.AMPLOPAY_SECRET_KEY_V2 || process.env.AMPLOPAY_SECRET_KEY || ""
+
+// Chave Pública (Client ID): a pública e a secreta DEVEM ser valores DIFERENTES do mesmo
+// par da conta AmploPay. Por isso, ao inves de confiar cegamente na ordem das variaveis,
+// escolhemos a primeira candidata que exista e que NAO seja igual a chave secreta. Assim,
+// se alguem colar a secreta por engano em AMPLOPAY_PUBLIC_KEY_V2, o codigo ainda encontra
+// a chave pública correta nas outras variaveis.
 const PUBLIC_KEY =
-  process.env.AMPLOPAY_PUBLIC_KEY_V2 ||
-  process.env.AMPLOPAY_PUBLIC_KEY ||
-  "comercialpabloandrade_y9odtac606v42bgh"
-const SECRET_KEY = process.env.AMPLOPAY_SECRET_KEY_V2 || ""
+  [
+    process.env.AMPLOPAY_PUBLIC_KEY_V2,
+    process.env.AMPLOPAY_PUBLIC_KEY,
+    "comercialpabloandrade_y9odtac606v42bgh",
+  ].find((k) => k && k !== SECRET_KEY) || ""
 
 // URL do webhook que a AmploPay chama quando o pagamento e confirmado.
 // IMPORTANTE: deve apontar para o dominio REAL de producao deste site, senao a AmploPay
