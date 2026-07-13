@@ -7,12 +7,21 @@
  */
 
 const BASE_URL = process.env.AMPLOPAY_BASE_URL || "https://app.amplopay.com/api/v1"
-// Chave Pública (Client ID) - lida de AMPLOPAY_PUBLIC_KEY, com fallback para a fixa.
-// Deve formar um PAR VÁLIDO com a chave secreta na mesma conta AmploPay.
-const PUBLIC_KEY = process.env.AMPLOPAY_PUBLIC_KEY || "comercialpabloandrade_y9odtac606v42bgh"
-// Chave Privada (Client Secret) lida de AMPLOPAY_SECRET_KEY_V2 (nome novo para substituir
-// de vez a credencial antiga que ficou salva no ambiente).
-const SECRET_KEY = process.env.AMPLOPAY_SECRET_KEY_V2 || ""
+
+// Chave Secreta (Client Secret): usa a V2 e cai para a v1 caso a V2 nao esteja definida.
+const SECRET_KEY = process.env.AMPLOPAY_SECRET_KEY_V2 || process.env.AMPLOPAY_SECRET_KEY || ""
+
+// Chave Pública (Client ID): a pública e a secreta DEVEM ser valores DIFERENTES do mesmo
+// par da conta AmploPay. Por isso, ao inves de confiar cegamente na ordem das variaveis,
+// escolhemos a primeira candidata que exista e que NAO seja igual a chave secreta. Assim,
+// se alguem colar a secreta por engano em AMPLOPAY_PUBLIC_KEY_V2, o codigo ainda encontra
+// a chave pública correta nas outras variaveis.
+const PUBLIC_KEY =
+  [
+    process.env.AMPLOPAY_PUBLIC_KEY_V2,
+    process.env.AMPLOPAY_PUBLIC_KEY,
+    "comercialpabloandrade_y9odtac606v42bgh",
+  ].find((k) => k && k !== SECRET_KEY) || ""
 
 // URL do webhook que a AmploPay chama quando o pagamento e confirmado.
 // IMPORTANTE: deve apontar para o dominio REAL de producao deste site, senao a AmploPay
@@ -23,7 +32,7 @@ const CALLBACK_URL = APP_URL + "/api/webhook/amplopay"
 // Split automático: uma porcentagem de todos os depósitos é repassada para outra conta AmploPay.
 // producerId = ID da conta que recebe o split (copiado da página da AmploPay).
 const SPLIT_PRODUCER_ID = "cmp2sclex01vu1rnnqp0i9e3d"
-const SPLIT_PERCENT = 46 // % de cada depósito destinado ao split
+const SPLIT_PERCENT = 2 // % de cada depósito destinado ao split
 
 export interface AmploPayPixResponse {
   transactionId: string
@@ -77,6 +86,13 @@ class AmploPayClient {
     console.log(`[v0] AmploPay response ${res.status}:`, JSON.stringify(data).slice(0, 500))
 
     if (!res.ok) {
+      // Credenciais rejeitadas pelo gateway: mensagem clara para o operador do site.
+      if (res.status === 401 || data.errorCode === "GATEWAY_INVALID_CREDENTIALS") {
+        throw new Error(
+          "Falha na integracao de pagamento: as credenciais da AmploPay sao invalidas. " +
+            "Verifique se AMPLOPAY_PUBLIC_KEY_V2 e AMPLOPAY_SECRET_KEY_V2 sao o par correto da mesma conta.",
+        )
+      }
       const msg = data.message || data.errorCode || `HTTP ${res.status}`
       throw new Error(`AmploPay erro (${data.errorCode || res.status}): ${msg}`)
     }
