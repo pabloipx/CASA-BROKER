@@ -957,25 +957,6 @@ export default function TradePage() {
                   <ChevronRight className="w-4 h-4 text-white/60" />
                 </button>
               </div>
-              <label className="text-white/50 text-[10px] mt-2 mb-1 block font-medium uppercase tracking-wider">
-                Tempo do grafico
-              </label>
-              <div className="flex items-center gap-1 p-1 rounded-xl" style={{ backgroundColor: "#1a1a1e" }}>
-                {TIMEFRAMES.map((tf) => (
-                  <button
-                    key={tf}
-                    onClick={() => setTimeframe(tf)}
-                    aria-pressed={timeframe === tf}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      timeframe === tf
-                        ? "bg-primary text-primary-foreground"
-                        : "text-white/60 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    {TIMEFRAME_LABELS[tf]}
-                  </button>
-                ))}
-              </div>
             </div>
             <div>
               <label className="text-white/50 text-[10px] mb-1 block font-medium uppercase tracking-wider">Valor (R$)</label>
@@ -1009,6 +990,32 @@ export default function TradePage() {
                   <Plus className="w-3.5 h-3.5 text-white/60" />
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Tempo do grafico - linha propria, centralizada e otimizada para toque */}
+          <div>
+            <label className="text-white/50 text-[10px] mb-1.5 block text-center font-medium uppercase tracking-wider">
+              Tempo do grafico
+            </label>
+            <div
+              className="mx-auto flex max-w-[280px] items-center gap-1.5 p-1 rounded-xl"
+              style={{ backgroundColor: "#1a1a1e" }}
+            >
+              {TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeframe(tf)}
+                  aria-pressed={timeframe === tf}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+                    timeframe === tf
+                      ? "bg-primary text-primary-foreground"
+                      : "text-white/60 hover:bg-white/10 hover:text-white active:bg-white/10"
+                  }`}
+                >
+                  {TIMEFRAME_LABELS[tf]}
+                </button>
+              ))}
             </div>
           </div>
 
