@@ -8,14 +8,9 @@
 
 const BASE_URL = process.env.AMPLOPAY_BASE_URL || "https://app.amplopay.com/api/v1"
 // Chave Pública (Client ID) e Chave Privada (Client Secret) DEVEM formar um PAR VÁLIDO
-// da MESMA conta AmploPay. Ambas sao lidas do ambiente. A pública tem um fallback fixo
-// apenas por compatibilidade, mas o ideal e configurar AMPLOPAY_PUBLIC_KEY_V2 junto com
-// AMPLOPAY_SECRET_KEY_V2 usando as duas chaves copiadas do mesmo lugar no painel.
-const PUBLIC_KEY =
-  process.env.AMPLOPAY_PUBLIC_KEY_V2 ||
-  process.env.AMPLOPAY_PUBLIC_KEY ||
-  "comercialpabloandrade_y9odtac606v42bgh"
-const SECRET_KEY = process.env.AMPLOPAY_SECRET_KEY_V2 || ""
+// da MESMA conta AmploPay. Ambas sao lidas exclusivamente do ambiente, sem fallback fixo.
+const PUBLIC_KEY = process.env.AMPLOPAY_PUBLIC_KEY || ""
+const SECRET_KEY = process.env.AMPLOPAY_SECRET_KEY || ""
 
 // URL do webhook que a AmploPay chama quando o pagamento e confirmado.
 // IMPORTANTE: deve apontar para o dominio REAL de producao deste site, senao a AmploPay
@@ -84,7 +79,7 @@ class AmploPayClient {
       if (res.status === 401 || data.errorCode === "GATEWAY_INVALID_CREDENTIALS") {
         throw new Error(
           "Falha na integracao de pagamento: as credenciais da AmploPay sao invalidas. " +
-            "Verifique se AMPLOPAY_PUBLIC_KEY_V2 e AMPLOPAY_SECRET_KEY_V2 sao o par correto da mesma conta.",
+            "Verifique se AMPLOPAY_PUBLIC_KEY e AMPLOPAY_SECRET_KEY sao o par correto da mesma conta.",
         )
       }
       const msg = data.message || data.errorCode || `HTTP ${res.status}`

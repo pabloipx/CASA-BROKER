@@ -16,13 +16,12 @@ export const config = {
   },
 
   // AmploPay
-  // A Chave Pública (Client ID) não é secreta, então fica fixa no código (sempre a nova).
-  // A Chave Privada (Client Secret) é lida de AMPLOPAY_SECRET_KEY_V2 (nome novo para
-  // garantir que substitua a credencial antiga que ficou salva no ambiente).
+  // Chave Pública (Client ID) e Chave Privada (Client Secret), lidas exclusivamente do
+  // ambiente. Devem ser um par válido da mesma conta AmploPay.
   amplopay: {
     baseUrl: process.env.AMPLOPAY_BASE_URL || "https://app.amplopay.com/api/v1",
-    publicKey: process.env.AMPLOPAY_PUBLIC_KEY || "comercialpabloandrade_y9odtac606v42bgh",
-    secretKey: process.env.AMPLOPAY_SECRET_KEY_V2 || "",
+    publicKey: process.env.AMPLOPAY_PUBLIC_KEY || "",
+    secretKey: process.env.AMPLOPAY_SECRET_KEY || "",
     get isConfigured() {
       return !!(this.publicKey && this.secretKey)
     },
