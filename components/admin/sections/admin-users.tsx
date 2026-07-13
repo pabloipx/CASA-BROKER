@@ -22,11 +22,32 @@ interface User {
   is_verified: boolean
   is_admin: boolean
   created_at: string
+  last_seen_at: string | null
   balance_real: number
   balance_demo: number
 }
 
 const ADMIN_PASSWORD = "Admin123!"
+
+// Considera o usuário online se teve atividade nos últimos 2 minutos
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000
+
+function isUserOnline(lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) return false
+  return Date.now() - new Date(lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
+}
+
+function OnlineBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-400">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+      </span>
+      online
+    </span>
+  )
+}
 
 export function AdminUsers() {
   const [users, setUsers] = useState<User[]>([])
@@ -47,6 +68,9 @@ export function AdminUsers() {
 
   useEffect(() => {
     loadUsers()
+    // Recarrega periodicamente para manter o status online atualizado
+    const interval = setInterval(loadUsers, 30_000)
+    return () => clearInterval(interval)
   }, [])
 
   const loadUsers = async () => {
@@ -221,7 +245,10 @@ export function AdminUsers() {
             <div key={user.id} className="bg-[#0D1117] border border-[#1E2430] rounded-xl p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <div className="text-white font-medium truncate">{user.full_name || "Sem nome"}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium truncate">{user.full_name || "Sem nome"}</span>
+                    {isUserOnline(user.last_seen_at) && <OnlineBadge />}
+                  </div>
                   <div className="text-gray-500 text-sm truncate">{user.email}</div>
                 </div>
                 <DropdownMenu>
@@ -329,7 +356,10 @@ export function AdminUsers() {
                   <tr key={user.id} className="hover:bg-[#1E2430]/50">
                     <td className="px-4 py-3">
                       <div>
-                        <div className="text-white font-medium">{user.full_name || "Sem nome"}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{user.full_name || "Sem nome"}</span>
+                          {isUserOnline(user.last_seen_at) && <OnlineBadge />}
+                        </div>
                         <div className="text-gray-500 text-sm">{user.email}</div>
                         {user.phone && <div className="text-gray-600 text-xs">{user.phone}</div>}
                       </div>
@@ -499,7 +529,7 @@ export function AdminUsers() {
               <Button
                 onClick={handleSaveUser}
                 disabled={saving}
-                className="flex-1 bg-gradient-to-r from-[#9333ea] to-[#a855f7] hover:from-[#7e22ce] hover:to-[#9333ea] text-white"
+                className="flex-1 bg-gradient-to-r from-[#2563eb] to-[#3b82f6] hover:from-[#1d4ed8] hover:to-[#2563eb] text-white"
               >
                 {saving ? "Salvando..." : "Salvar"}
               </Button>

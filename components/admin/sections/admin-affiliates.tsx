@@ -205,7 +205,7 @@ export function AdminAffiliates() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-[#9333ea] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#2563eb] animate-spin" />
       </div>
     )
   }
@@ -216,8 +216,8 @@ export function AdminAffiliates() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl bg-[#121826] border border-[#1F2933]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#9333ea]/20 flex items-center justify-center">
-              <Users className="w-5 h-5 text-[#9333ea]" />
+            <div className="w-10 h-10 rounded-lg bg-[#2563eb]/20 flex items-center justify-center">
+              <Users className="w-5 h-5 text-[#2563eb]" />
             </div>
             <div>
               <p className="text-white/40 text-xs">Total Afiliados</p>
@@ -227,8 +227,8 @@ export function AdminAffiliates() {
         </div>
         <div className="p-4 rounded-xl bg-[#121826] border border-[#1F2933]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#9333ea]/20 flex items-center justify-center">
-              <UserPlus className="w-5 h-5 text-[#9333ea]" />
+            <div className="w-10 h-10 rounded-lg bg-[#2563eb]/20 flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-[#2563eb]" />
             </div>
             <div>
               <p className="text-white/40 text-xs">Ativos</p>
@@ -238,8 +238,8 @@ export function AdminAffiliates() {
         </div>
         <div className="p-4 rounded-xl bg-[#121826] border border-[#1F2933]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#9333ea]/20 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-[#9333ea]" />
+            <div className="w-10 h-10 rounded-lg bg-[#2563eb]/20 flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-[#2563eb]" />
             </div>
             <div>
               <p className="text-white/40 text-xs">Total Pago</p>
@@ -251,8 +251,8 @@ export function AdminAffiliates() {
         </div>
         <div className="p-4 rounded-xl bg-[#121826] border border-[#1F2933]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#9333ea]/20 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-[#9333ea]" />
+            <div className="w-10 h-10 rounded-lg bg-[#2563eb]/20 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-[#2563eb]" />
             </div>
             <div>
               <p className="text-white/40 text-xs">Total Referidos</p>
@@ -300,7 +300,7 @@ export function AdminAffiliates() {
                     <>
                       <button
                         onClick={() => processWithdrawal(withdrawal.id, "completed")}
-                        className="p-2 rounded-lg bg-[#9333ea] hover:bg-[#9333ea]/80 text-white"
+                        className="p-2 rounded-lg bg-[#2563eb] hover:bg-[#2563eb]/80 text-white"
                         title="Aprovar"
                       >
                         <Check className="w-4 h-4" />
@@ -347,7 +347,7 @@ export function AdminAffiliates() {
                   </div>
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium ${
-                      isApproved ? "bg-[#9333ea]/20 text-[#9333ea]" : "bg-red-500/20 text-red-500"
+                      isApproved ? "bg-[#2563eb]/20 text-[#2563eb]" : "bg-red-500/20 text-red-500"
                     }`}
                   >
                     {isApproved ? "Aprovado" : "Recusado"}
@@ -371,7 +371,7 @@ export function AdminAffiliates() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar..."
-                className="pl-9 pr-4 py-2 rounded-lg bg-[#0a0e17] border border-[#1F2933] text-white text-sm focus:border-[#9333ea] outline-none"
+                className="pl-9 pr-4 py-2 rounded-lg bg-[#0a0e17] border border-[#1F2933] text-white text-sm focus:border-[#2563eb] outline-none"
               />
             </div>
             <button
@@ -407,7 +407,7 @@ export function AdminAffiliates() {
                     </div>
                   </td>
                   <td className="py-3 px-2">
-                    <span className="text-[#9333ea] font-mono font-bold text-sm">{affiliate.code}</span>
+                    <span className="text-[#2563eb] font-mono font-bold text-sm">{affiliate.code}</span>
                   </td>
                   <td className="py-3 px-2">
                     {editingAffiliate === affiliate.id ? (
@@ -421,7 +421,7 @@ export function AdminAffiliates() {
                         />
                         <button
                           onClick={() => updateCommission(affiliate.id)}
-                          className="p-1 rounded bg-[#9333ea] text-white"
+                          className="p-1 rounded bg-[#2563eb] text-white"
                         >
                           <Check className="w-3 h-3" />
                         </button>
@@ -459,7 +459,7 @@ export function AdminAffiliates() {
                         />
                         <button
                           onClick={() => updateBalance(affiliate.id)}
-                          className="p-1 rounded bg-[#9333ea] text-white"
+                          className="p-1 rounded bg-[#2563eb] text-white"
                         >
                           <Check className="w-3 h-3" />
                         </button>
@@ -488,7 +488,7 @@ export function AdminAffiliates() {
                     )}
                   </td>
                   <td className="py-3 px-2">
-                    <span className="text-[#9333ea] text-sm font-medium">
+                    <span className="text-[#2563eb] text-sm font-medium">
                       R$ {formatCurrency(affiliate.total_earned)}
                     </span>
                   </td>
@@ -499,7 +499,7 @@ export function AdminAffiliates() {
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
                         affiliate.status === "active"
-                          ? "bg-[#9333ea]/20 text-[#9333ea]"
+                          ? "bg-[#2563eb]/20 text-[#2563eb]"
                           : "bg-red-500/20 text-red-500"
                       }`}
                     >
@@ -512,7 +512,7 @@ export function AdminAffiliates() {
                       className={`px-3 py-1 rounded text-xs font-medium ${
                         affiliate.status === "active"
                           ? "bg-red-500/20 text-red-500 hover:bg-red-500/30"
-                          : "bg-[#9333ea]/20 text-[#9333ea] hover:bg-[#9333ea]/30"
+                          : "bg-[#2563eb]/20 text-[#2563eb] hover:bg-[#2563eb]/30"
                       }`}
                     >
                       {affiliate.status === "active" ? "Desativar" : "Ativar"}

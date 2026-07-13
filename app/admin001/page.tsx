@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 
-const ADMIN_EMAIL = "samucarmo2024@gmail.com"
-const ADMIN_PASSWORD = "Sasa159753123@"
+const ADMIN_EMAIL = "admin@admin.com"
+const ADMIN_PASSWORD = "Admin123!"
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("")
@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <Image
             src="/images/kodilex-logo.png"
-            alt="Kodilex Broker"
+            alt="CASA BROKER"
             width={200}
             height={50}
             className="mx-auto mb-4"
@@ -84,7 +84,7 @@ export default function AdminLoginPage() {
           <Button
             type="submit"
             disabled={isLoading || !email || !password}
-            className="w-full h-12 bg-gradient-to-r from-[#9333ea] to-[#a855f7] hover:from-[#7e22ce] hover:to-[#9333ea] text-white font-semibold"
+            className="w-full h-12 bg-gradient-to-r from-[#2563eb] to-[#3b82f6] hover:from-[#1d4ed8] hover:to-[#2563eb] text-white font-semibold"
           >
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>

@@ -69,7 +69,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
       <div className="p-4 border-b border-[#1E2430]">
         <Image
           src="/images/kodilex-logo.png"
-          alt="Kodilex Broker"
+          alt="CASA BROKER"
           width={150}
           height={40}
           className="mx-auto"
@@ -86,7 +86,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
               activeSection === item.id
-                ? "bg-[#9333ea]/20 text-[#a855f7]"
+                ? "bg-[#2563eb]/20 text-[#3b82f6]"
                 : "text-gray-400 hover:text-white hover:bg-[#1E2430]",
             )}
           >
@@ -113,7 +113,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     activeSection === item.id
-                      ? "bg-[#9333ea]/20 text-[#a855f7]"
+                      ? "bg-[#2563eb]/20 text-[#3b82f6]"
                       : "text-gray-400 hover:text-white hover:bg-[#1E2430]",
                   )}
                 >
@@ -143,7 +143,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     activeSection === item.id
-                      ? "bg-[#9333ea]/20 text-[#a855f7]"
+                      ? "bg-[#2563eb]/20 text-[#3b82f6]"
                       : "text-gray-400 hover:text-white hover:bg-[#1E2430]",
                   )}
                 >
@@ -173,7 +173,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     activeSection === item.id
-                      ? "bg-[#9333ea]/20 text-[#a855f7]"
+                      ? "bg-[#2563eb]/20 text-[#3b82f6]"
                       : "text-gray-400 hover:text-white hover:bg-[#1E2430]",
                   )}
                 >

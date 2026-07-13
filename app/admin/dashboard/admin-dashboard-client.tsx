@@ -23,6 +23,7 @@ import {
   UserPlus,
   Settings,
   CandlestickChart,
+  Sliders,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +34,7 @@ import { AdminCards } from "@/components/admin/sections/admin-cards"
 import { AdminCharts } from "@/components/admin/sections/admin-charts"
 import { UsersChart, DepositsChart } from "@/components/admin/sections/tab-charts"
 import { AdminAssets } from "@/components/admin/sections/admin-assets"
+import { AdminManipulation } from "@/components/admin/sections/admin-manipulation"
 
 const ADMIN_TOKEN = "Admin123!"
 
@@ -48,6 +50,14 @@ interface Stats {
   pendingKyc: number
 }
 
+// Considera o usuário online se teve atividade nos últimos 2 minutos
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000
+
+function isUserOnline(lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) return false
+  return Date.now() - new Date(lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
+}
+
 interface User {
   id: string
   email: string
@@ -56,6 +66,7 @@ interface User {
   is_blocked: boolean
   is_verified: boolean
   created_at: string
+  last_seen_at: string | null
   balance_real: number
   balance_demo: number
 }
@@ -190,6 +201,13 @@ export default function AdminDashboardClient() {
     if (isAuthenticated && activeTab === "settings") fetchSettings()
   }, [isAuthenticated, activeTab])
 
+  // Atualiza o status online dos usuários periodicamente enquanto a aba estiver aberta
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== "users") return
+    const interval = setInterval(fetchUsers, 30_000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated, activeTab])
+
   // Menu items
   const menuItems = [
     { id: "home", label: "Dashboard", icon: Home },
@@ -200,6 +218,7 @@ export default function AdminDashboardClient() {
     { id: "affiliates", label: "Afiliados", icon: UserPlus },
     { id: "trades", label: "Operacoes", icon: History },
     { id: "assets", label: "Ativos", icon: CandlestickChart },
+    { id: "manipulation", label: "Manipulacao", icon: Sliders },
     { id: "cards", label: "Cartoes", icon: CreditCard },
     { id: "settings", label: "Configuracoes", icon: Settings },
   ]
@@ -579,7 +598,7 @@ export default function AdminDashboardClient() {
         <button onClick={() => setSidebarOpen(true)}>
           <Menu className="w-6 h-6 text-white" />
         </button>
-        <Image src="/images/kodilex-logo.png" alt="Kodilex Broker" width={120} height={30} />
+        <Image src="/images/kodilex-logo.png" alt="CASA BROKER" width={120} height={30} />
         <button onClick={handleLogout}>
           <LogOut className="w-6 h-6 text-red-500" />
         </button>
@@ -590,7 +609,7 @@ export default function AdminDashboardClient() {
         <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setSidebarOpen(false)}>
           <div className="w-64 h-full bg-[#0B0F14] border-r border-[#1E2633] p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-8">
-              <Image src="/images/kodilex-logo.png" alt="Kodilex Broker" width={120} height={30} />
+              <Image src="/images/kodilex-logo.png" alt="CASA BROKER" width={120} height={30} />
               <button onClick={() => setSidebarOpen(false)}>
                 <X className="w-6 h-6 text-white" />
               </button>
@@ -604,7 +623,7 @@ export default function AdminDashboardClient() {
                     setSidebarOpen(false)
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
-                    activeTab === item.id ? "bg-purple-500/20 text-purple-500" : "text-gray-400 hover:bg-[#1A1F2E]"
+                    activeTab === item.id ? "bg-blue-500/20 text-blue-500" : "text-gray-400 hover:bg-[#1A1F2E]"
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -625,7 +644,7 @@ export default function AdminDashboardClient() {
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex lg:flex-col w-64 min-h-screen border-r border-[#1E2633] p-4">
           <div className="mb-8">
-            <Image src="/images/kodilex-logo.png" alt="Kodilex Broker" width={150} height={40} />
+            <Image src="/images/kodilex-logo.png" alt="CASA BROKER" width={150} height={40} />
             <p className="text-gray-400 text-sm mt-2">Painel Admin</p>
           </div>
           <nav className="space-y-2 flex-1">
@@ -634,7 +653,7 @@ export default function AdminDashboardClient() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
-                  activeTab === item.id ? "bg-purple-500/20 text-purple-500" : "text-gray-400 hover:bg-[#1A1F2E]"
+                  activeTab === item.id ? "bg-blue-500/20 text-blue-500" : "text-gray-400 hover:bg-[#1A1F2E]"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -777,7 +796,7 @@ export default function AdminDashboardClient() {
                       onClick={() => setUserDaysFilter(opt.value)}
                       className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                         active
-                          ? "bg-purple-500 text-white"
+                          ? "bg-blue-500 text-white"
                           : "border border-[#2A3142] bg-[#11161f] text-gray-400 hover:bg-[#171d28] hover:text-gray-200"
                       }`}
                     >
@@ -801,11 +820,20 @@ export default function AdminDashboardClient() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="text-white font-medium truncate">{user.email}</p>
+                            {isUserOnline(user.last_seen_at) && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-400 shrink-0">
+                                <span className="relative flex h-1.5 w-1.5">
+                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+                                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                                </span>
+                                online
+                              </span>
+                            )}
                             {user.is_blocked && (
                               <span className="px-2 py-0.5 bg-red-500/20 text-red-500 text-xs rounded">Bloqueado</span>
                             )}
   {user.is_verified && (
-  <span className="px-2 py-0.5 bg-purple-500/20 text-purple-500 text-xs rounded">
+  <span className="px-2 py-0.5 bg-blue-500/20 text-blue-500 text-xs rounded">
   Verificado
   </span>
   )}
@@ -875,7 +903,7 @@ export default function AdminDashboardClient() {
                             <p className="text-white font-medium">{deposit.user_email || "Usuário"}</p>
                             <span className={`px-2 py-0.5 text-xs rounded ${
                               deposit.method === "crypto" ? "bg-yellow-500/20 text-yellow-500" :
-                              deposit.method === "card" ? "bg-purple-500/20 text-purple-500" :
+                              deposit.method === "card" ? "bg-blue-500/20 text-blue-500" :
                               "bg-green-500/20 text-green-500"
                             }`}>
                               {deposit.method === "crypto" ? "USDT" : deposit.method === "card" ? "Cartao" : "PIX"}
@@ -1244,7 +1272,8 @@ export default function AdminDashboardClient() {
           {activeTab === "cards" && <AdminCards />}
 
           {/* Ativos Tab */}
-          {activeTab === "assets" && <AdminAssets />}
+            {activeTab === "assets" && <AdminAssets />}
+            {activeTab === "manipulation" && <AdminManipulation />}
 
           {/* Settings Tab */}
           {activeTab === "settings" && (
@@ -1258,8 +1287,8 @@ export default function AdminDashboardClient() {
                   {/* Card Deposit Toggle */}
                   <div className="flex items-center justify-between p-4 bg-[#0B0F14] rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                        <CreditCard className="w-5 h-5 text-purple-500" />
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                        <CreditCard className="w-5 h-5 text-blue-500" />
                       </div>
                       <div>
                         <p className="text-white font-medium">Deposito via Cartao</p>
@@ -1445,14 +1474,14 @@ function StatCard({
   badge?: string
 }) {
   const accents: Record<string, string> = {
-    blue: "#a855f7",
+    blue: "#3b82f6",
     green: "#22c55e",
     red: "#ef4444",
     purple: "#a78bfa",
     cyan: "#22d3ee",
     yellow: "#eab308",
   }
-  const accent = accents[color] || "#a855f7"
+  const accent = accents[color] || "#3b82f6"
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0c121c] p-5 transition-all duration-300 hover:border-white/[0.12] hover:-translate-y-0.5">

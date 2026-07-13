@@ -70,7 +70,7 @@ export function AdminHome({ stats, loading, onRefresh, refreshKey }: AdminHomePr
       value: stats.totalTrades,
       isCount: true,
       icon: BarChart3,
-      accent: "#c084fc",
+      accent: "#60a5fa",
       caption: "Operações reais",
     },
     {
