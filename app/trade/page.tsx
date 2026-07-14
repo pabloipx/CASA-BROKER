@@ -26,6 +26,7 @@ import {
   X,
   Search,
   Clock,
+  LayoutGrid,
 } from "lucide-react"
 
 interface ActiveTrade {
@@ -133,6 +134,8 @@ export default function TradePage() {
   const [balanceDemo, setBalanceDemo] = useState(10000)
   const [loading, setLoading] = useState(true)
   const [selectedSymbol, setSelectedSymbol] = useState("EURUSD_OTC")
+  // Ativos abertos como abas no topo (estilo IQ Option, somente desktop)
+  const [openSymbols, setOpenSymbols] = useState<string[]>(["EURUSD_OTC"])
   const [expiryTime, setExpiryTime] = useState<number>(60)
   const [timeframe, setTimeframe] = useState<number>(300) // Tempo do grafico (padrao 5m)
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([])
@@ -189,6 +192,35 @@ export default function TradePage() {
   const selectedAsset = useMemo(
     () => availableAssets.find((a) => a.symbol === selectedSymbol) || availableAssets[0],
     [selectedSymbol, availableAssets],
+  )
+
+  // Garante que o ativo ativo esteja sempre presente na lista de abas
+  useEffect(() => {
+    setOpenSymbols((prev) => (prev.includes(selectedSymbol) ? prev : [...prev, selectedSymbol]))
+  }, [selectedSymbol])
+
+  // Ativos abertos como abas, na ordem de abertura
+  const openTabAssets = useMemo(
+    () =>
+      openSymbols
+        .map((s) => availableAssets.find((a) => a.symbol === s))
+        .filter((a): a is Asset => Boolean(a)),
+    [openSymbols, availableAssets],
+  )
+
+  // Fecha uma aba; se era a ativa, ativa a aba vizinha
+  const handleCloseTab = useCallback(
+    (symbol: string, e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (openSymbols.length <= 1) return
+      const idx = openSymbols.indexOf(symbol)
+      const next = openSymbols.filter((s) => s !== symbol)
+      setOpenSymbols(next)
+      if (symbol === selectedSymbol) {
+        setSelectedSymbol(next[Math.min(idx, next.length - 1)])
+      }
+    },
+    [openSymbols, selectedSymbol],
   )
 
   const payout = selectedAsset?.payout ?? 96
@@ -752,10 +784,10 @@ export default function TradePage() {
             <MoreVertical className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" />
           </button>
 
-          {/* Center - Asset Selector (flex-1 to fill space, truncated) */}
+          {/* Center - Asset Selector (mobile only) */}
           <button
             onClick={() => setShowAssetModal(true)}
-            className="flex items-center gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] transition-all duration-200 border border-white/[0.06] min-w-0 flex-1 max-w-[200px] lg:max-w-none lg:flex-initial"
+            className="lg:hidden flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] transition-all duration-200 border border-white/[0.06] min-w-0 flex-1 max-w-[200px]"
           >
             <div className="w-7 h-7 lg:w-9 lg:h-9 rounded-full overflow-hidden bg-gray-700 shrink-0 ring-2 ring-white/10">
               <Image
@@ -781,6 +813,73 @@ export default function TradePage() {
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
           </button>
+
+          {/* Center - Asset Tabs (desktop only, estilo IQ Option) */}
+          <div className="hidden lg:flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar">
+            {/* Botao grade - abre a lista de ativos */}
+            <button
+              onClick={() => setShowAssetModal(true)}
+              aria-label="Lista de ativos"
+              className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] transition-colors shrink-0"
+            >
+              <LayoutGrid className="w-4 h-4 text-gray-400" />
+            </button>
+
+            {openTabAssets.map((asset) => {
+              const active = asset.symbol === selectedSymbol
+              return (
+                <div
+                  key={asset.symbol}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedSymbol(asset.symbol)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setSelectedSymbol(asset.symbol)
+                  }}
+                  className={`group relative flex items-center gap-2 pl-1.5 pr-3 h-10 rounded-lg shrink-0 max-w-[180px] cursor-pointer transition-colors ${
+                    active ? "bg-white/[0.08]" : "bg-white/[0.03] hover:bg-white/[0.06]"
+                  }`}
+                >
+                  <button
+                    onClick={(e) => handleCloseTab(asset.symbol, e)}
+                    aria-label={`Fechar ${asset.name}`}
+                    className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-white/15 transition-colors shrink-0"
+                  >
+                    <X className="w-3 h-3 text-gray-500 group-hover:text-gray-300" />
+                  </button>
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0 ring-1 ring-white/10">
+                    <Image
+                      src={asset.logo || "/placeholder.svg"}
+                      alt={asset.name}
+                      width={24}
+                      height={24}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="text-left min-w-0 leading-none">
+                    <p
+                      className={`text-xs font-semibold leading-tight truncate ${active ? "text-white" : "text-gray-300"}`}
+                    >
+                      {asset.name}
+                    </p>
+                    <p className="text-gray-500 text-[10px] leading-tight mt-0.5">Binária</p>
+                  </div>
+                  {active && (
+                    <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[#f59e0b]" />
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Botao adicionar ativo */}
+            <button
+              onClick={() => setShowAssetModal(true)}
+              aria-label="Adicionar ativo"
+              className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
 
           {/* Right - Balance & Wallet */}
           <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto">

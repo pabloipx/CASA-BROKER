@@ -261,3 +261,12 @@ body {
     animation: none;
   }
 }
+
+/* Esconde a barra de rolagem mantendo o scroll (usado nas abas de ativos) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
