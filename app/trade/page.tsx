@@ -87,6 +87,8 @@ const FALLBACK_ASSETS: Asset[] = [
 ]
 
 const TIMEFRAMES = [5, 10, 15, 60, 300, 900, 3600]
+// Opcoes exibidas no seletor "TEMPO DO GRAFICO" (apenas o grafico, nao o tempo da operacao)
+const CHART_TIMEFRAMES = [15, 300, 900]
 const TIMEFRAME_LABELS: Record<number, string> = {
   5: "5s",
   10: "10s",
@@ -130,7 +132,7 @@ export default function TradePage() {
   const [loading, setLoading] = useState(true)
   const [selectedSymbol, setSelectedSymbol] = useState("EURUSD_OTC")
   const [expiryTime, setExpiryTime] = useState<number>(60)
-  const [timeframe, setTimeframe] = useState<number>(60) // Acompanha o tempo selecionado na corretora
+  const [timeframe, setTimeframe] = useState<number>(300) // Tempo do grafico (padrao 5m)
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([])
   const [isTrading, setIsTrading] = useState(false)
   const [showSidebar, setSidebarOpen] = useState(false)
@@ -835,7 +837,7 @@ export default function TradePage() {
               Tempo do grafico
             </label>
             <div className="flex items-center gap-1.5 p-1 rounded-xl" style={{ backgroundColor: "#1a1a1e" }}>
-              {TIMEFRAMES.map((tf) => (
+              {CHART_TIMEFRAMES.map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setTimeframe(tf)}
@@ -1006,7 +1008,7 @@ export default function TradePage() {
               className="mx-auto flex max-w-[280px] items-center gap-1.5 p-1 rounded-xl"
               style={{ backgroundColor: "#1a1a1e" }}
             >
-              {TIMEFRAMES.map((tf) => (
+              {CHART_TIMEFRAMES.map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setTimeframe(tf)}
