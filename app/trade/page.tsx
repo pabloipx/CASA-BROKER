@@ -89,6 +89,8 @@ const FALLBACK_ASSETS: Asset[] = [
 const TIMEFRAMES = [5, 10, 15, 60, 300, 900, 3600]
 // Opcoes exibidas no seletor "TEMPO DO GRAFICO" (apenas o grafico, nao o tempo da operacao)
 const CHART_TIMEFRAMES = [60, 300, 900]
+// Valor minimo permitido por entrada (R$)
+const MIN_AMOUNT = 5
 const TIMEFRAME_LABELS: Record<number, string> = {
   5: "5s",
   10: "10s",
@@ -142,6 +144,9 @@ export default function TradePage() {
   const [accountType, setAccountType] = useState<"demo" | "real">("real")
   const [showAccountDropdown, setShowAccountDropdown] = useState(false)
   const [amount, setAmount] = useState(10)
+  // Texto livre do campo de valor: permite apagar tudo e digitar qualquer numero.
+  // O minimo (MIN_AMOUNT) so e aplicado ao sair do campo (onBlur) ou ao operar.
+  const [amountInput, setAmountInput] = useState("10")
   const [showAssetModal, setShowAssetModal] = useState(false)
   const [assetSearch, setAssetSearch] = useState("")
   const [availableAssets, setAvailableAssets] = useState<Asset[]>(FALLBACK_ASSETS)
@@ -529,8 +534,8 @@ export default function TradePage() {
       }
 
       // Validations
-      if (amount <= 0) {
-        setTradeError("Valor deve ser maior que zero")
+      if (amount < MIN_AMOUNT) {
+        setTradeError(`Valor minimo por entrada e R$ ${MIN_AMOUNT}`)
         setTimeout(() => setTradeError(null), 3000)
         return
       }
@@ -645,10 +650,38 @@ export default function TradePage() {
 
   const handleAmountChange = useCallback(
     (delta: number) => {
-      setAmount((prev) => Math.max(1, Math.min(currentBalance || 10000, prev + delta)))
+      setAmount((prev) => {
+        const next = Math.max(MIN_AMOUNT, Math.min(currentBalance || 10000, prev + delta))
+        setAmountInput(String(next))
+        return next
+      })
     },
     [currentBalance],
   )
+
+  // Enquanto o usuario digita, aceitamos texto livre (inclusive vazio) para nao travar no "1".
+  const handleAmountInput = useCallback(
+    (raw: string) => {
+      // Mantem apenas numeros e um separador decimal.
+      const clean = raw.replace(/[^\d.,]/g, "").replace(",", ".")
+      setAmountInput(clean)
+      const val = Number.parseFloat(clean)
+      if (!Number.isNaN(val)) {
+        setAmount(Math.min(currentBalance || 10000, val))
+      }
+    },
+    [currentBalance],
+  )
+
+  // Ao sair do campo, aplicamos o minimo de R$ 5 e o teto do saldo.
+  const handleAmountBlur = useCallback(() => {
+    const val = Number.parseFloat(amountInput)
+    const final = Number.isNaN(val)
+      ? MIN_AMOUNT
+      : Math.max(MIN_AMOUNT, Math.min(currentBalance || 10000, val))
+    setAmount(final)
+    setAmountInput(String(final))
+  }, [amountInput, currentBalance])
 
   const [isDesktop, setIsDesktop] = useState(false)
 
@@ -860,23 +893,20 @@ export default function TradePage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleAmountChange(-10)}
-                disabled={amount <= 1}
+                disabled={amount <= MIN_AMOUNT}
                 className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
                 style={{ backgroundColor: "#1a1a1e" }}
               >
                 <Minus className="w-4 h-4 text-white/60" />
               </button>
               <input
-                type="number"
-                value={amount}
-                onChange={(e) => {
-                  const val = Number.parseFloat(e.target.value) || 1
-                  setAmount(Math.max(1, Math.min(currentBalance || 10000, val)))
-                }}
+                type="text"
+                inputMode="decimal"
+                value={amountInput}
+                onChange={(e) => handleAmountInput(e.target.value)}
+                onBlur={handleAmountBlur}
                 className="w-full h-10 px-3 rounded-xl text-center text-white text-base font-bold bg-transparent border-0 outline-none"
                 style={{ backgroundColor: "#1a1a1e" }}
-                min="1"
-                max={currentBalance || 10000}
               />
               <button
                 onClick={() => handleAmountChange(10)}
@@ -969,23 +999,20 @@ export default function TradePage() {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => handleAmountChange(-10)}
-                  disabled={amount <= 1}
+                  disabled={amount <= MIN_AMOUNT}
                   className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 disabled:opacity-30 shrink-0"
                   style={{ backgroundColor: "#1a1a1e" }}
                 >
                   <Minus className="w-3.5 h-3.5 text-white/60" />
                 </button>
                 <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => {
-                    const val = Number.parseFloat(e.target.value) || 1
-                    setAmount(Math.max(1, Math.min(currentBalance || 10000, val)))
-                  }}
+                  type="text"
+                  inputMode="decimal"
+                  value={amountInput}
+                  onChange={(e) => handleAmountInput(e.target.value)}
+                  onBlur={handleAmountBlur}
                   className="w-full h-8 px-2 rounded-lg text-center text-white text-sm font-bold bg-transparent border-0 outline-none"
                   style={{ backgroundColor: "#1a1a1e" }}
-                  min="1"
-                  max={currentBalance || 10000}
                 />
                 <button
                   onClick={() => handleAmountChange(10)}
