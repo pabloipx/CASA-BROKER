@@ -14,6 +14,7 @@ import {
   ChevronRight,
   TrendingUp,
   Crown,
+  Copy,
   Wallet,
   Users,
 } from "lucide-react"
@@ -83,6 +84,7 @@ export function SidebarMenu({
   }
 
   const mainMenuItems = [
+    { icon: Copy, label: "Copy Trade", href: "/copy" },
     { icon: Crown, label: "Ranking", href: "/ranking" },
     { icon: History, label: "Historico", href: "/transactions" },
     { icon: User, label: "Perfil", href: "/profile" },

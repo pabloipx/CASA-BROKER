@@ -628,6 +628,23 @@ export default function TradePage() {
 
         setActiveTrades((prev) => [...prev, activeTrade])
         setHistoryRefresh((prev) => prev + 1)
+
+        // COPY TRADE: se esta for uma operacao REAL, replica para os seguidores deste trader.
+        // Fire-and-forget: nao bloqueia a experiencia de quem abriu a operacao.
+        if (!isDemo) {
+          fetch("/api/copy/replicate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              symbol: selectedSymbol,
+              direction,
+              entryPrice,
+              timeframe: expiryTime,
+              expiryTime: expiryTimeDate.toISOString(),
+              payoutPercentage: payout / 100,
+            }),
+          }).catch(() => {})
+        }
       } catch (err: any) {
         setTradeError(err?.message || "Erro ao executar operação")
         setTimeout(() => setTradeError(null), 3000)
