@@ -26,6 +26,7 @@ import {
   X,
   Search,
   Clock,
+  LayoutGrid,
 } from "lucide-react"
 
 interface ActiveTrade {
@@ -86,11 +87,19 @@ const FALLBACK_ASSETS: Asset[] = [
   },
 ]
 
-const TIMEFRAMES = [60, 300, 600]
+const TIMEFRAMES = [5, 10, 15, 60, 300, 900, 3600]
+// Opcoes exibidas no seletor "TEMPO DO GRAFICO" (apenas o grafico, nao o tempo da operacao)
+const CHART_TIMEFRAMES = [60, 300, 900]
+// Valor minimo permitido por entrada (R$)
+const MIN_AMOUNT = 5
 const TIMEFRAME_LABELS: Record<number, string> = {
+  5: "5s",
+  10: "10s",
+  15: "15s",
   60: "1m",
   300: "5m",
-  600: "10m",
+  900: "15m",
+  3600: "1h",
 }
 
 const formatCurrency = (value: number | undefined | null): string => {
@@ -125,8 +134,10 @@ export default function TradePage() {
   const [balanceDemo, setBalanceDemo] = useState(10000)
   const [loading, setLoading] = useState(true)
   const [selectedSymbol, setSelectedSymbol] = useState("EURUSD_OTC")
+  // Ativos abertos como abas no topo (estilo IQ Option, somente desktop)
+  const [openSymbols, setOpenSymbols] = useState<string[]>(["EURUSD_OTC"])
   const [expiryTime, setExpiryTime] = useState<number>(60)
-  const [timeframe, setTimeframe] = useState<number>(60) // Acompanha o tempo selecionado na corretora
+  const [timeframe, setTimeframe] = useState<number>(300) // Tempo do grafico (padrao 5m)
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([])
   const [isTrading, setIsTrading] = useState(false)
   const [showSidebar, setSidebarOpen] = useState(false)
@@ -136,6 +147,9 @@ export default function TradePage() {
   const [accountType, setAccountType] = useState<"demo" | "real">("real")
   const [showAccountDropdown, setShowAccountDropdown] = useState(false)
   const [amount, setAmount] = useState(10)
+  // Texto livre do campo de valor: permite apagar tudo e digitar qualquer numero.
+  // O minimo (MIN_AMOUNT) so e aplicado ao sair do campo (onBlur) ou ao operar.
+  const [amountInput, setAmountInput] = useState("10")
   const [showAssetModal, setShowAssetModal] = useState(false)
   const [assetSearch, setAssetSearch] = useState("")
   const [availableAssets, setAvailableAssets] = useState<Asset[]>(FALLBACK_ASSETS)
@@ -165,7 +179,7 @@ export default function TradePage() {
 
   // Trader sentiment (simulated)
 
-  const { price, candles, isConnected } = useGlobalOTC(selectedSymbol, timeframe as 60 | 300 | 600)
+  const { price, candles, isConnected } = useGlobalOTC(selectedSymbol, timeframe)
 
   // Mantem o motor de precos sincronizado com as manipulacoes agendadas pelo admin
   useManipulationSync()
@@ -178,6 +192,35 @@ export default function TradePage() {
   const selectedAsset = useMemo(
     () => availableAssets.find((a) => a.symbol === selectedSymbol) || availableAssets[0],
     [selectedSymbol, availableAssets],
+  )
+
+  // Garante que o ativo ativo esteja sempre presente na lista de abas
+  useEffect(() => {
+    setOpenSymbols((prev) => (prev.includes(selectedSymbol) ? prev : [...prev, selectedSymbol]))
+  }, [selectedSymbol])
+
+  // Ativos abertos como abas, na ordem de abertura
+  const openTabAssets = useMemo(
+    () =>
+      openSymbols
+        .map((s) => availableAssets.find((a) => a.symbol === s))
+        .filter((a): a is Asset => Boolean(a)),
+    [openSymbols, availableAssets],
+  )
+
+  // Fecha uma aba; se era a ativa, ativa a aba vizinha
+  const handleCloseTab = useCallback(
+    (symbol: string, e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (openSymbols.length <= 1) return
+      const idx = openSymbols.indexOf(symbol)
+      const next = openSymbols.filter((s) => s !== symbol)
+      setOpenSymbols(next)
+      if (symbol === selectedSymbol) {
+        setSelectedSymbol(next[Math.min(idx, next.length - 1)])
+      }
+    },
+    [openSymbols, selectedSymbol],
   )
 
   const payout = selectedAsset?.payout ?? 96
@@ -312,9 +355,11 @@ export default function TradePage() {
       // Filter only truly expired trades
       const now = Date.now()
       const expiredTrades = pendingTrades.filter((t) => {
-        const entryMs = new Date(t.entry_time).getTime()
-        const expiryMs = (t.timeframe || 60) * 1000
-        return now >= entryMs + expiryMs
+        // Usa o expiry_time gravado (alinhado a vela). Fallback: entrada + timeframe (operacoes antigas).
+        const expiryMs = t.expiry_time
+          ? new Date(t.expiry_time).getTime()
+          : new Date(t.entry_time).getTime() + (t.timeframe || 60) * 1000
+        return now >= expiryMs
       })
 
       if (expiredTrades.length === 0) return
@@ -323,8 +368,9 @@ export default function TradePage() {
         // Preco de saida vindo do MOTOR determinístico (mesmo do grafico), lido no instante
         // de expiracao da operacao. Assim, se houver manipulacao ativa do admin para o ativo,
         // o resultado segue a direcao configurada; caso contrario, segue o preco normal.
-        const entryMs = new Date(trade.entry_time).getTime()
-        const expiryMs = entryMs + (trade.timeframe || 60) * 1000
+        const expiryMs = trade.expiry_time
+          ? new Date(trade.expiry_time).getTime()
+          : new Date(trade.entry_time).getTime() + (trade.timeframe || 60) * 1000
         const enginePrice = multiAssetEngine.getPriceAtTime(trade.symbol, expiryMs / 1000)
         const exitPrice = enginePrice > 0 ? enginePrice : trade.entry_price
         const isWin =
@@ -523,8 +569,8 @@ export default function TradePage() {
       }
 
       // Validations
-      if (amount <= 0) {
-        setTradeError("Valor deve ser maior que zero")
+      if (amount < MIN_AMOUNT) {
+        setTradeError(`Valor minimo por entrada e R$ ${MIN_AMOUNT}`)
         setTimeout(() => setTradeError(null), 3000)
         return
       }
@@ -549,7 +595,18 @@ export default function TradePage() {
       try {
         const tradeId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
         const entryTime = new Date()
-        const expiryTimeDate = new Date(Date.now() + expiryTime * 1000)
+        // Expiracao alinhada ao fechamento da vela (estilo cronometro):
+        // se a entrada ocorre na primeira metade da vela (ex.: ate 30s numa vela de 1m),
+        // a operacao termina no fim da vela ATUAL; caso contrario, rola para o fim da PROXIMA vela.
+        const nowMs = Date.now()
+        const nowSec = nowMs / 1000
+        const candleStartSec = Math.floor(nowSec / expiryTime) * expiryTime
+        const timeIntoCandle = nowSec - candleStartSec
+        const expirySec =
+          timeIntoCandle <= expiryTime / 2 ? candleStartSec + expiryTime : candleStartSec + expiryTime * 2
+        const expiryTimeDate = new Date(expirySec * 1000)
+        // Duracao real ate o fechamento da vela (usada pelo cronometro do grafico e pela verificacao ao vivo).
+        const actualDurationSec = Math.max(1, Math.round((expiryTimeDate.getTime() - nowMs) / 1000))
         const isDemo = accountType === "demo"
 
         // Deduct balance first
@@ -610,13 +667,30 @@ export default function TradePage() {
           direction: direction, // UPPERCASE
           amount,
           entryPrice: entryPrice,
-          expiryTime: expiryTime,
-          timestamp: Date.now(),
+          expiryTime: actualDurationSec,
+          timestamp: nowMs,
           isDemo,
         }
 
         setActiveTrades((prev) => [...prev, activeTrade])
         setHistoryRefresh((prev) => prev + 1)
+
+        // COPY TRADE: se esta for uma operacao REAL, replica para os seguidores deste trader.
+        // Fire-and-forget: nao bloqueia a experiencia de quem abriu a operacao.
+        if (!isDemo) {
+          fetch("/api/copy/replicate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              symbol: selectedSymbol,
+              direction,
+              entryPrice,
+              timeframe: expiryTime,
+              expiryTime: expiryTimeDate.toISOString(),
+              payoutPercentage: payout / 100,
+            }),
+          }).catch(() => {})
+        }
       } catch (err: any) {
         setTradeError(err?.message || "Erro ao executar operação")
         setTimeout(() => setTradeError(null), 3000)
@@ -639,10 +713,38 @@ export default function TradePage() {
 
   const handleAmountChange = useCallback(
     (delta: number) => {
-      setAmount((prev) => Math.max(1, Math.min(currentBalance || 10000, prev + delta)))
+      setAmount((prev) => {
+        const next = Math.max(MIN_AMOUNT, Math.min(currentBalance || 10000, prev + delta))
+        setAmountInput(String(next))
+        return next
+      })
     },
     [currentBalance],
   )
+
+  // Enquanto o usuario digita, aceitamos texto livre (inclusive vazio) para nao travar no "1".
+  const handleAmountInput = useCallback(
+    (raw: string) => {
+      // Mantem apenas numeros e um separador decimal.
+      const clean = raw.replace(/[^\d.,]/g, "").replace(",", ".")
+      setAmountInput(clean)
+      const val = Number.parseFloat(clean)
+      if (!Number.isNaN(val)) {
+        setAmount(Math.min(currentBalance || 10000, val))
+      }
+    },
+    [currentBalance],
+  )
+
+  // Ao sair do campo, aplicamos o minimo de R$ 5 e o teto do saldo.
+  const handleAmountBlur = useCallback(() => {
+    const val = Number.parseFloat(amountInput)
+    const final = Number.isNaN(val)
+      ? MIN_AMOUNT
+      : Math.max(MIN_AMOUNT, Math.min(currentBalance || 10000, val))
+    setAmount(final)
+    setAmountInput(String(final))
+  }, [amountInput, currentBalance])
 
   const [isDesktop, setIsDesktop] = useState(false)
 
@@ -682,10 +784,10 @@ export default function TradePage() {
             <MoreVertical className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" />
           </button>
 
-          {/* Center - Asset Selector (flex-1 to fill space, truncated) */}
+          {/* Center - Asset Selector (mobile only) */}
           <button
             onClick={() => setShowAssetModal(true)}
-            className="flex items-center gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] transition-all duration-200 border border-white/[0.06] min-w-0 flex-1 max-w-[200px] lg:max-w-none lg:flex-initial"
+            className="lg:hidden flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] transition-all duration-200 border border-white/[0.06] min-w-0 flex-1 max-w-[200px]"
           >
             <div className="w-7 h-7 lg:w-9 lg:h-9 rounded-full overflow-hidden bg-gray-700 shrink-0 ring-2 ring-white/10">
               <Image
@@ -711,6 +813,73 @@ export default function TradePage() {
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
           </button>
+
+          {/* Center - Asset Tabs (desktop only, estilo IQ Option) */}
+          <div className="hidden lg:flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar">
+            {/* Botao grade - abre a lista de ativos */}
+            <button
+              onClick={() => setShowAssetModal(true)}
+              aria-label="Lista de ativos"
+              className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] transition-colors shrink-0"
+            >
+              <LayoutGrid className="w-4 h-4 text-gray-400" />
+            </button>
+
+            {openTabAssets.map((asset) => {
+              const active = asset.symbol === selectedSymbol
+              return (
+                <div
+                  key={asset.symbol}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedSymbol(asset.symbol)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setSelectedSymbol(asset.symbol)
+                  }}
+                  className={`group relative flex items-center gap-2 pl-1.5 pr-3 h-10 rounded-lg shrink-0 max-w-[180px] cursor-pointer transition-colors ${
+                    active ? "bg-white/[0.08]" : "bg-white/[0.03] hover:bg-white/[0.06]"
+                  }`}
+                >
+                  <button
+                    onClick={(e) => handleCloseTab(asset.symbol, e)}
+                    aria-label={`Fechar ${asset.name}`}
+                    className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-white/15 transition-colors shrink-0"
+                  >
+                    <X className="w-3 h-3 text-gray-500 group-hover:text-gray-300" />
+                  </button>
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0 ring-1 ring-white/10">
+                    <Image
+                      src={asset.logo || "/placeholder.svg"}
+                      alt={asset.name}
+                      width={24}
+                      height={24}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="text-left min-w-0 leading-none">
+                    <p
+                      className={`text-xs font-semibold leading-tight truncate ${active ? "text-white" : "text-gray-300"}`}
+                    >
+                      {asset.name}
+                    </p>
+                    <p className="text-gray-500 text-[10px] leading-tight mt-0.5">Binária</p>
+                  </div>
+                  {active && (
+                    <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[#f59e0b]" />
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Botao adicionar ativo */}
+            <button
+              onClick={() => setShowAssetModal(true)}
+              aria-label="Adicionar ativo"
+              className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
 
           {/* Right - Balance & Wallet */}
           <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto">
@@ -787,7 +956,7 @@ export default function TradePage() {
               candles={candles || []}
               currentPrice={price || 0}
               activeTrades={activeTradesForChart}
-              timeframe={timeframe as 60 | 300 | 600}
+                timeframe={timeframe}
               symbol={selectedSymbol}
               payout={payout / 100}
               result={tradeResult}
@@ -831,7 +1000,7 @@ export default function TradePage() {
               Tempo do grafico
             </label>
             <div className="flex items-center gap-1.5 p-1 rounded-xl" style={{ backgroundColor: "#1a1a1e" }}>
-              {TIMEFRAMES.map((tf) => (
+              {CHART_TIMEFRAMES.map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setTimeframe(tf)}
@@ -854,23 +1023,20 @@ export default function TradePage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleAmountChange(-10)}
-                disabled={amount <= 1}
+                disabled={amount <= MIN_AMOUNT}
                 className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
                 style={{ backgroundColor: "#1a1a1e" }}
               >
                 <Minus className="w-4 h-4 text-white/60" />
               </button>
               <input
-                type="number"
-                value={amount}
-                onChange={(e) => {
-                  const val = Number.parseFloat(e.target.value) || 1
-                  setAmount(Math.max(1, Math.min(currentBalance || 10000, val)))
-                }}
+                type="text"
+                inputMode="decimal"
+                value={amountInput}
+                onChange={(e) => handleAmountInput(e.target.value)}
+                onBlur={handleAmountBlur}
                 className="w-full h-10 px-3 rounded-xl text-center text-white text-base font-bold bg-transparent border-0 outline-none"
                 style={{ backgroundColor: "#1a1a1e" }}
-                min="1"
-                max={currentBalance || 10000}
               />
               <button
                 onClick={() => handleAmountChange(10)}
@@ -963,23 +1129,20 @@ export default function TradePage() {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => handleAmountChange(-10)}
-                  disabled={amount <= 1}
+                  disabled={amount <= MIN_AMOUNT}
                   className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 disabled:opacity-30 shrink-0"
                   style={{ backgroundColor: "#1a1a1e" }}
                 >
                   <Minus className="w-3.5 h-3.5 text-white/60" />
                 </button>
                 <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => {
-                    const val = Number.parseFloat(e.target.value) || 1
-                    setAmount(Math.max(1, Math.min(currentBalance || 10000, val)))
-                  }}
+                  type="text"
+                  inputMode="decimal"
+                  value={amountInput}
+                  onChange={(e) => handleAmountInput(e.target.value)}
+                  onBlur={handleAmountBlur}
                   className="w-full h-8 px-2 rounded-lg text-center text-white text-sm font-bold bg-transparent border-0 outline-none"
                   style={{ backgroundColor: "#1a1a1e" }}
-                  min="1"
-                  max={currentBalance || 10000}
                 />
                 <button
                   onClick={() => handleAmountChange(10)}
@@ -1002,7 +1165,7 @@ export default function TradePage() {
               className="mx-auto flex max-w-[280px] items-center gap-1.5 p-1 rounded-xl"
               style={{ backgroundColor: "#1a1a1e" }}
             >
-              {TIMEFRAMES.map((tf) => (
+              {CHART_TIMEFRAMES.map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setTimeframe(tf)}

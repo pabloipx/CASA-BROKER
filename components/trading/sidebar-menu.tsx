@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useRank } from "@/lib/hooks/use-rank"
 import {
   X,
   History,
@@ -12,7 +13,8 @@ import {
   LogOut,
   ChevronRight,
   TrendingUp,
-  Shield,
+  Crown,
+  Copy,
   Wallet,
   Users,
 } from "lucide-react"
@@ -37,6 +39,7 @@ export function SidebarMenu({
 }: SidebarMenuProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isAffiliate, setIsAffiliate] = useState(false)
+  const { progress: rankProgress } = useRank(isOpen ? userId : undefined)
 
   useEffect(() => {
     if (!userId || !isOpen) return
@@ -81,6 +84,8 @@ export function SidebarMenu({
   }
 
   const mainMenuItems = [
+    { icon: Copy, label: "Copy Trade", href: "/copy" },
+    { icon: Crown, label: "Ranking", href: "/ranking" },
     { icon: History, label: "Historico", href: "/transactions" },
     { icon: User, label: "Perfil", href: "/profile" },
     ...(isAffiliate ? [{ icon: Users, label: "Afiliados", href: "/afiliados" }] : []),
@@ -146,8 +151,13 @@ export function SidebarMenu({
                 <div className="flex-1 min-w-0">
                   <div className="text-white font-semibold text-sm truncate">{userName || "Trader"}</div>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <Shield className="w-3 h-3 text-[#3b82f6]" />
-                    <span className="text-[#3b82f6] text-[11px] font-medium">VIP Bronze</span>
+                    <Crown className="w-3 h-3" style={{ color: rankProgress?.current.color || "#cd7f32" }} />
+                    <span
+                      className="text-[11px] font-medium"
+                      style={{ color: rankProgress?.current.color || "#cd7f32" }}
+                    >
+                      Nivel {rankProgress?.current.name || "Bronze"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -159,7 +169,9 @@ export function SidebarMenu({
                 </div>
                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#2563eb]/15 rounded-lg">
                   <TrendingUp className="w-3 h-3 text-[#3b82f6]" />
-                  <span className="text-[#3b82f6] text-[10px] font-bold">85%</span>
+                  <span className="text-[#3b82f6] text-[10px] font-bold">
+                    {rankProgress?.next ? `${Math.round(rankProgress.overallProgress * 100)}%` : "MAX"}
+                  </span>
                 </div>
               </div>
             </div>

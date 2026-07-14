@@ -165,6 +165,21 @@ function findManipulation(symbol: string, tMs: number): CandleManipulation | nul
   return null
 }
 
+// Onda triangular suave em [0,1] usada para criar "pausas": quando o mercado entra
+// numa janela de consolidacao, comprimimos a amplitude do ruido por alguns segundos,
+// simulando aquelas paradinhas rapidas antes de o preco voltar a andar.
+function pauseEnvelope(timestamp: number, seed: number): number {
+  // A cada ~9s decidimos se estamos numa fase de "andar" (1.0) ou "pausar" (~0.28).
+  const slot = Math.floor(timestamp / 9)
+  const r = srand(slot * 3.11 + seed)
+  const isPause = r > 0.72 // ~28% dos slots sao pausas curtas
+  if (!isPause) return 1
+  // Suaviza a entrada/saida da pausa para nao "travar" bruscamente.
+  const f = (timestamp / 9) - slot
+  const smooth = Math.sin(f * Math.PI) // 0 -> 1 -> 0 dentro do slot
+  return 1 - 0.72 * smooth
+}
+
 function getLivePrice(asset: OTCAsset, timestamp: number): number {
   const symSeed = asset.basePrice * 13.37
 
@@ -175,6 +190,10 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
   }
   // Normalize to roughly [-1, 1]
   dev = dev / PRICE_OCTAVE_TOTAL
+
+  // Aplica o "envelope de pausa": de tempos em tempos o preco quase para (retracao/
+  // consolidacao curta) em vez de flutuar sem parar, deixando o movimento mais natural.
+  dev *= pauseEnvelope(timestamp, symSeed)
 
   // A largura da banda ESCALA com a volatilidade do ativo (vol ~28..160 -> ~0.5%..2.4%).
   // Antes era fixa em 0.6% para todos, o que deixava o movimento de ativos muito volateis
@@ -192,13 +211,31 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
   const manip = ACTIVE_MANIPULATIONS.length ? findManipulation(asset.symbol, timestamp * 1000) : null
   if (manip) {
     const dur = Math.max(1, manip.endMs - manip.startMs)
-    // Progresso 0..1 dentro da janela; o vies cresce suavemente ate ~2.5x a banda,
-    // garantindo um movimento direcional forte e continuo (vela cheia pra cima/baixo).
     const progress = Math.min(1, Math.max(0, (timestamp * 1000 - manip.startMs) / dur))
-    const eased = progress * progress * (3 - 2 * progress) // smoothstep
+    // smoothstep: acelera no comeco e desacelera no fim, como um movimento real.
+    const eased = progress * progress * (3 - 2 * progress)
     const mult = INTENSITY_MULTIPLIER[manip.intensity || "MEDIUM"]
-    const strength = asset.basePrice * bandPct * mult * eased
-    price += manip.direction === "UP" ? strength : -strength
+    const dir = manip.direction === "UP" ? 1 : -1
+
+    // Deslocamento direcional total (a "trilha" que a vela deve seguir ate o fim da janela).
+    const target = asset.basePrice * bandPct * mult * eased
+
+    // IMPORTANTE: durante a manipulacao NAO transformamos a vela numa reta robotica.
+    // Mantemos a textura natural do candle (dev * maxDev) e ainda adicionamos uma OSCILACAO
+    // RAPIDA dedicada. Os componentes rapidos do ruido normal sao pequenos demais para vencer
+    // a deriva direcional, entao sem este termo a vela subiria/desceria em linha reta. Com ele,
+    // aparecem velas contrarias ocasionais e pausas — como um mercado real em tendencia — mas
+    // a deriva (target) sempre vence no conjunto, respeitando a direcao forcada pelo admin.
+    const jitter =
+      valueNoise(timestamp / 8 + symSeed, symSeed + 313) * 0.6 +
+      valueNoise(timestamp / 3 + symSeed, symSeed + 517) * 0.4
+    // Amplitude calibrada (~0.9x a banda escalada) para gerar recuos VISIVEIS candle a candle
+    // sem estourar a tendencia. Cresce com o easing para acompanhar a forca do movimento.
+    const naturalSwing = asset.basePrice * bandPct * mult * 0.9 * jitter * (0.4 + 0.6 * eased)
+
+    price = asset.basePrice + dev * maxDev
+    price += dir * target + naturalSwing
+
     if (price <= 0) price = asset.basePrice * 0.5
   }
 
@@ -267,7 +304,7 @@ class MultiAssetEngine {
     return getLivePrice(asset, timestampSeconds)
   }
 
-  getCandles(symbol: string, timeframe: 60 | 300 | 600): OTCCandle[] {
+  getCandles(symbol: string, timeframe: number): OTCCandle[] {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     if (!asset) return []
     const now = Math.floor(Date.now() / 1000)
@@ -280,7 +317,7 @@ class MultiAssetEngine {
   }
 
   // Returns ~24h of candles for the given timeframe, built oldest-first.
-  getHistory(symbol: string, timeframe: 60 | 300 | 600): OTCCandle[] {
+  getHistory(symbol: string, timeframe: number): OTCCandle[] {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     if (!asset) return []
     const now = Math.floor(Date.now() / 1000)
@@ -293,7 +330,7 @@ class MultiAssetEngine {
     return candles
   }
 
-  getCurrentCandle(symbol: string, timeframe: 60 | 300 | 600): OTCCandle | null {
+  getCurrentCandle(symbol: string, timeframe: number): OTCCandle | null {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     if (!asset) return null
     const now = Date.now() / 1000
@@ -322,7 +359,7 @@ class MultiAssetEngine {
     }
   }
 
-  getAssetState(symbol: string, timeframe: 60 | 300 | 600) {
+  getAssetState(symbol: string, timeframe: number) {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     const now = Math.floor(Date.now() / 1000)
     const cacheKey = `${symbol}_${timeframe}`
