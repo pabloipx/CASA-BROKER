@@ -45,27 +45,20 @@ export async function GET(request: Request) {
 
     const followingMap = new Map((follows || []).map((f) => [f.master_id, f.active]))
 
-    // Estatisticas simples (total de operacoes e taxa de acerto) por trader.
+    // Total de operacoes reais por trader (nao expomos taxa de acerto).
     const results = await Promise.all(
       (profiles || []).map(async (p) => {
-        const { data: stats } = await admin
+        const { count } = await admin
           .from("trades")
-          .select("result")
+          .select("id", { count: "exact", head: true })
           .eq("user_id", p.id)
           .eq("is_demo", false)
-          .in("result", ["win", "loss", "WIN", "LOSS"])
-          .limit(500)
-
-        const total = stats?.length || 0
-        const wins = (stats || []).filter((t) => (t.result || "").toLowerCase() === "win").length
-        const winRate = total > 0 ? Math.round((wins / total) * 100) : 0
 
         return {
           id: p.id,
           full_name: p.full_name || "Trader",
           email: p.email || "",
-          totalTrades: total,
-          winRate,
+          totalTrades: count || 0,
           isFollowing: followingMap.get(p.id) === true,
         }
       }),

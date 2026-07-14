@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { ChevronLeft, Search, Copy, TrendingUp, Trash2, UserPlus, Check, X, Loader2 } from "lucide-react"
+import { ChevronLeft, Search, Copy, Trash2, UserPlus, Check, X, Loader2, Users, Activity } from "lucide-react"
 
 const MIN_COPY_AMOUNT = 5
 
@@ -12,7 +12,6 @@ interface SearchResult {
   full_name: string
   email: string
   totalTrades: number
-  winRate: number
   isFollowing: boolean
 }
 
@@ -164,6 +163,8 @@ export default function CopyTradePage() {
       .join("")
       .toUpperCase()
 
+  const activeCount = following.filter((f) => f.active).length
+
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: "#0B0F14" }}>
       {/* Header */}
@@ -178,25 +179,51 @@ export default function CopyTradePage() {
       </div>
 
       <div className="px-4 pt-5 max-w-2xl mx-auto">
-        {/* Explicacao */}
-        <div className="rounded-2xl border border-[#1F2933] bg-[#121826] p-4 mb-5">
-          <p className="text-sm text-[#9CA3AF] leading-relaxed text-pretty">
-            Pesquise um trader pelo nome e copie as operacoes dele automaticamente. Toda vez que ele abrir uma
-            operacao real, uma copia sera aberta na sua conta usando o valor fixo que voce definir.
-          </p>
+        {/* Hero / destaque */}
+        <div className="relative overflow-hidden rounded-2xl border border-[#2563eb]/30 bg-gradient-to-br from-[#152238] to-[#121826] p-5 mb-5">
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#2563eb]/20 px-2.5 py-1 mb-3">
+              <Activity className="w-3 h-3 text-[#3b82f6]" />
+              <span className="text-[11px] font-semibold text-[#3b82f6]">Copie automaticamente</span>
+            </div>
+            <h2 className="text-lg font-bold text-white text-balance mb-1.5">Siga os melhores traders</h2>
+            <p className="text-sm text-[#9CA3AF] leading-relaxed text-pretty max-w-md">
+              Pesquise um trader pelo nome e copie as operacoes dele em tempo real. Cada operacao real que ele abrir e
+              replicada na sua conta com o valor fixo que voce escolher.
+            </p>
+          </div>
+          <Copy className="absolute -right-4 -bottom-4 w-28 h-28 text-[#2563eb]/10" strokeWidth={1.5} />
+        </div>
+
+        {/* Resumo */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <div className="rounded-xl border border-[#1F2933] bg-[#121826] p-3.5">
+            <div className="flex items-center gap-1.5 text-[#6B7280] mb-1">
+              <Users className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-medium uppercase tracking-wide">Copiando</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{following.length}</p>
+          </div>
+          <div className="rounded-xl border border-[#1F2933] bg-[#121826] p-3.5">
+            <div className="flex items-center gap-1.5 text-[#6B7280] mb-1">
+              <span className="w-2 h-2 rounded-full bg-[#10b981]" />
+              <span className="text-[11px] font-medium uppercase tracking-wide">Ativos</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{activeCount}</p>
+          </div>
         </div>
 
         {/* Busca */}
         <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6B7280]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6B7280]" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Pesquisar trader por nome ou email"
-            className="w-full h-12 pl-11 pr-4 rounded-xl bg-[#121826] border border-[#1F2933] text-white placeholder:text-[#6B7280] outline-none focus:border-[#2563eb] transition-colors"
+            className="w-full h-12 pl-11 pr-4 rounded-xl bg-[#121826] border border-[#1F2933] text-white placeholder:text-[#6B7280] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
           />
           {searching && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2563eb] animate-spin" />
+            <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#2563eb] animate-spin" />
           )}
         </div>
 
@@ -204,20 +231,17 @@ export default function CopyTradePage() {
         {results.length > 0 && (
           <div className="flex flex-col gap-2 mb-6">
             {results.map((r) => (
-              <div key={r.id} className="rounded-xl border border-[#1F2933] bg-[#121826] p-3">
+              <div
+                key={r.id}
+                className="rounded-xl border border-[#1F2933] bg-[#121826] p-3 transition-colors hover:border-[#2A3441]"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-[#2563eb]/20 flex items-center justify-center shrink-0">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#2563eb]/30 to-[#2563eb]/10 flex items-center justify-center shrink-0 ring-1 ring-[#2563eb]/20">
                     <span className="text-sm font-bold text-[#3b82f6]">{initials(r.full_name)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold truncate">{r.full_name}</p>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="flex items-center gap-1 text-[11px] text-[#10b981]">
-                        <TrendingUp className="w-3 h-3" />
-                        {r.winRate}% acerto
-                      </span>
-                      <span className="text-[11px] text-[#6B7280]">{r.totalTrades} operacoes</span>
-                    </div>
+                    <span className="text-[11px] text-[#6B7280]">{r.totalTrades} operacoes</span>
                   </div>
                   {r.isFollowing ? (
                     <span className="flex items-center gap-1 text-[12px] font-medium text-[#10b981] px-2">
@@ -227,7 +251,7 @@ export default function CopyTradePage() {
                   ) : (
                     <button
                       onClick={() => openFollowForm(r)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#2563eb] text-white text-sm font-semibold active:opacity-80 transition-opacity shrink-0"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#2563eb] text-white text-sm font-semibold hover:bg-[#1d4fd8] active:opacity-80 transition-colors shrink-0"
                     >
                       <UserPlus className="w-4 h-4" />
                       Copiar
@@ -238,7 +262,9 @@ export default function CopyTradePage() {
                 {/* Form de valor fixo inline */}
                 {pendingMaster?.id === r.id && (
                   <div className="mt-3 pt-3 border-t border-[#1F2933]">
-                    <label className="text-xs text-[#9CA3AF]">Valor fixo por operacao (min. R$ {MIN_COPY_AMOUNT})</label>
+                    <label className="text-xs text-[#9CA3AF]">
+                      Valor fixo por operacao (min. R$ {MIN_COPY_AMOUNT})
+                    </label>
                     <div className="flex items-center gap-2 mt-2">
                       <div className="relative flex-1">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280] text-sm">R$</span>
@@ -253,7 +279,7 @@ export default function CopyTradePage() {
                       <button
                         onClick={confirmFollow}
                         disabled={savingFollow}
-                        className="h-11 px-4 rounded-lg bg-[#10b981] text-white text-sm font-semibold active:opacity-80 disabled:opacity-50 flex items-center gap-1.5"
+                        className="h-11 px-4 rounded-lg bg-[#10b981] text-white text-sm font-semibold hover:bg-[#0ea472] active:opacity-80 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
                       >
                         {savingFollow ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                         Confirmar
@@ -286,15 +312,19 @@ export default function CopyTradePage() {
           </div>
         ) : following.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#1F2933] p-8 text-center">
-            <Copy className="w-8 h-8 text-[#374151] mx-auto mb-2" />
-            <p className="text-[#6B7280] text-sm">Voce ainda nao copia nenhum trader. Pesquise acima para comecar.</p>
+            <div className="w-12 h-12 rounded-full bg-[#121826] flex items-center justify-center mx-auto mb-3">
+              <Copy className="w-6 h-6 text-[#374151]" />
+            </div>
+            <p className="text-[#6B7280] text-sm">
+              Voce ainda nao copia nenhum trader. Pesquise acima para comecar.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             {following.map((f) => (
               <div key={f.id} className="rounded-xl border border-[#1F2933] bg-[#121826] p-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-[#2563eb]/20 flex items-center justify-center shrink-0">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#2563eb]/30 to-[#2563eb]/10 flex items-center justify-center shrink-0 ring-1 ring-[#2563eb]/20">
                     <span className="text-sm font-bold text-[#3b82f6]">{initials(f.masterName)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -303,7 +333,7 @@ export default function CopyTradePage() {
                   </div>
                   <button
                     onClick={() => unfollow(f)}
-                    className="h-9 w-9 rounded-lg bg-[#1F2933] text-[#ef4444] flex items-center justify-center active:opacity-80 shrink-0"
+                    className="h-9 w-9 rounded-lg bg-[#1F2933] text-[#ef4444] flex items-center justify-center hover:bg-[#ef4444]/15 active:opacity-80 shrink-0 transition-colors"
                     aria-label="Deixar de copiar"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -323,7 +353,7 @@ export default function CopyTradePage() {
                   </div>
                   <button
                     onClick={() => toggleActive(f)}
-                    className="h-10 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 active:opacity-80 shrink-0"
+                    className="h-10 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 active:opacity-80 shrink-0 transition-colors"
                     style={{
                       backgroundColor: f.active ? "#10b98122" : "#1F2933",
                       color: f.active ? "#10b981" : "#9CA3AF",
