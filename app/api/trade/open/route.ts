@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid direction" }, { status: 400 })
     }
 
-    if (![60, 300, 600].includes(timeframe)) {
+    if (![5, 10, 15, 60, 300, 900, 3600].includes(timeframe)) {
       return NextResponse.json({ error: "Invalid timeframe" }, { status: 400 })
     }
 

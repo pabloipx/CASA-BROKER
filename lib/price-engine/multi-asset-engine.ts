@@ -304,7 +304,7 @@ class MultiAssetEngine {
     return getLivePrice(asset, timestampSeconds)
   }
 
-  getCandles(symbol: string, timeframe: 60 | 300 | 600): OTCCandle[] {
+  getCandles(symbol: string, timeframe: number): OTCCandle[] {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     if (!asset) return []
     const now = Math.floor(Date.now() / 1000)
@@ -317,7 +317,7 @@ class MultiAssetEngine {
   }
 
   // Returns ~24h of candles for the given timeframe, built oldest-first.
-  getHistory(symbol: string, timeframe: 60 | 300 | 600): OTCCandle[] {
+  getHistory(symbol: string, timeframe: number): OTCCandle[] {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     if (!asset) return []
     const now = Math.floor(Date.now() / 1000)
@@ -330,7 +330,7 @@ class MultiAssetEngine {
     return candles
   }
 
-  getCurrentCandle(symbol: string, timeframe: 60 | 300 | 600): OTCCandle | null {
+  getCurrentCandle(symbol: string, timeframe: number): OTCCandle | null {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     if (!asset) return null
     const now = Date.now() / 1000
@@ -359,7 +359,7 @@ class MultiAssetEngine {
     }
   }
 
-  getAssetState(symbol: string, timeframe: 60 | 300 | 600) {
+  getAssetState(symbol: string, timeframe: number) {
     const asset = OTC_ASSETS.find(a => a.symbol === symbol)
     const now = Math.floor(Date.now() / 1000)
     const cacheKey = `${symbol}_${timeframe}`

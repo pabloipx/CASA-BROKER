@@ -18,7 +18,7 @@ import { multiAssetEngine, OTC_ASSETS, type OTCCandle } from "@/lib/price-engine
  * A liquidacao de operacoes continua no servidor (usando o mesmo motor deterministico),
  * entao os precos exibidos e os de liquidacao permanecem consistentes.
  */
-export function useGlobalOTC(symbol: string, timeframe: 60 | 300 | 600) {
+export function useGlobalOTC(symbol: string, timeframe: number) {
   const validSymbol = OTC_ASSETS.find((a) => a.symbol === symbol)?.symbol || "EURUSD_OTC"
   const asset = OTC_ASSETS.find((a) => a.symbol === validSymbol) || OTC_ASSETS[0]
 

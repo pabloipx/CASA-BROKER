@@ -86,11 +86,15 @@ const FALLBACK_ASSETS: Asset[] = [
   },
 ]
 
-const TIMEFRAMES = [60, 300, 600]
+const TIMEFRAMES = [5, 10, 15, 60, 300, 900, 3600]
 const TIMEFRAME_LABELS: Record<number, string> = {
+  5: "5s",
+  10: "10s",
+  15: "15s",
   60: "1m",
   300: "5m",
-  600: "10m",
+  900: "15m",
+  3600: "1h",
 }
 
 const formatCurrency = (value: number | undefined | null): string => {
@@ -165,7 +169,7 @@ export default function TradePage() {
 
   // Trader sentiment (simulated)
 
-  const { price, candles, isConnected } = useGlobalOTC(selectedSymbol, timeframe as 60 | 300 | 600)
+  const { price, candles, isConnected } = useGlobalOTC(selectedSymbol, timeframe)
 
   // Mantem o motor de precos sincronizado com as manipulacoes agendadas pelo admin
   useManipulationSync()
@@ -787,7 +791,7 @@ export default function TradePage() {
               candles={candles || []}
               currentPrice={price || 0}
               activeTrades={activeTradesForChart}
-              timeframe={timeframe as 60 | 300 | 600}
+                timeframe={timeframe}
               symbol={selectedSymbol}
               payout={payout / 100}
               result={tradeResult}
