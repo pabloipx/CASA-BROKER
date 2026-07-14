@@ -88,7 +88,7 @@ const FALLBACK_ASSETS: Asset[] = [
 
 const TIMEFRAMES = [5, 10, 15, 60, 300, 900, 3600]
 // Opcoes exibidas no seletor "TEMPO DO GRAFICO" (apenas o grafico, nao o tempo da operacao)
-const CHART_TIMEFRAMES = [15, 300, 900]
+const CHART_TIMEFRAMES = [60, 300, 900]
 const TIMEFRAME_LABELS: Record<number, string> = {
   5: "5s",
   10: "10s",
