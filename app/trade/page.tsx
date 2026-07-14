@@ -323,9 +323,11 @@ export default function TradePage() {
       // Filter only truly expired trades
       const now = Date.now()
       const expiredTrades = pendingTrades.filter((t) => {
-        const entryMs = new Date(t.entry_time).getTime()
-        const expiryMs = (t.timeframe || 60) * 1000
-        return now >= entryMs + expiryMs
+        // Usa o expiry_time gravado (alinhado a vela). Fallback: entrada + timeframe (operacoes antigas).
+        const expiryMs = t.expiry_time
+          ? new Date(t.expiry_time).getTime()
+          : new Date(t.entry_time).getTime() + (t.timeframe || 60) * 1000
+        return now >= expiryMs
       })
 
       if (expiredTrades.length === 0) return
@@ -334,8 +336,9 @@ export default function TradePage() {
         // Preco de saida vindo do MOTOR determinístico (mesmo do grafico), lido no instante
         // de expiracao da operacao. Assim, se houver manipulacao ativa do admin para o ativo,
         // o resultado segue a direcao configurada; caso contrario, segue o preco normal.
-        const entryMs = new Date(trade.entry_time).getTime()
-        const expiryMs = entryMs + (trade.timeframe || 60) * 1000
+        const expiryMs = trade.expiry_time
+          ? new Date(trade.expiry_time).getTime()
+          : new Date(trade.entry_time).getTime() + (trade.timeframe || 60) * 1000
         const enginePrice = multiAssetEngine.getPriceAtTime(trade.symbol, expiryMs / 1000)
         const exitPrice = enginePrice > 0 ? enginePrice : trade.entry_price
         const isWin =
@@ -560,7 +563,18 @@ export default function TradePage() {
       try {
         const tradeId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
         const entryTime = new Date()
-        const expiryTimeDate = new Date(Date.now() + expiryTime * 1000)
+        // Expiracao alinhada ao fechamento da vela (estilo cronometro):
+        // se a entrada ocorre na primeira metade da vela (ex.: ate 30s numa vela de 1m),
+        // a operacao termina no fim da vela ATUAL; caso contrario, rola para o fim da PROXIMA vela.
+        const nowMs = Date.now()
+        const nowSec = nowMs / 1000
+        const candleStartSec = Math.floor(nowSec / expiryTime) * expiryTime
+        const timeIntoCandle = nowSec - candleStartSec
+        const expirySec =
+          timeIntoCandle <= expiryTime / 2 ? candleStartSec + expiryTime : candleStartSec + expiryTime * 2
+        const expiryTimeDate = new Date(expirySec * 1000)
+        // Duracao real ate o fechamento da vela (usada pelo cronometro do grafico e pela verificacao ao vivo).
+        const actualDurationSec = Math.max(1, Math.round((expiryTimeDate.getTime() - nowMs) / 1000))
         const isDemo = accountType === "demo"
 
         // Deduct balance first
@@ -621,8 +635,8 @@ export default function TradePage() {
           direction: direction, // UPPERCASE
           amount,
           entryPrice: entryPrice,
-          expiryTime: expiryTime,
-          timestamp: Date.now(),
+          expiryTime: actualDurationSec,
+          timestamp: nowMs,
           isDemo,
         }
 
