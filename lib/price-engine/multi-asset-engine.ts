@@ -220,22 +220,21 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
     // Deslocamento direcional total (a "trilha" que a vela deve seguir ate o fim da janela).
     const target = asset.basePrice * bandPct * mult * eased
 
-    // Retracoes NATURAIS ao longo do caminho: em vez do ruido normal (que fazia a vela
-    // chacoalhar aleatoriamente pra cima e pra baixo sem rumo), somamos uma oscilacao lenta
-    // e centrada em zero (media ~0) sobre a trilha direcional. Como oscila para os dois lados
-    // com amplitude relevante, cria recuos VISIVEIS a favor do realismo, mas como a trilha
-    // (target) sempre cresce na direcao, o movimento geral continua indo para onde foi forcado.
-    const wobble =
-      valueNoise(timestamp / 6 + symSeed, symSeed + 99) * 0.6 +
-      valueNoise(timestamp / 2.5 + symSeed, symSeed + 271) * 0.4
-    // Amplitude do "respiro": ~35% da banda do ativo, escalado pela intensidade e pelo easing.
-    const breath = asset.basePrice * bandPct * mult * 0.35 * wobble * eased
+    // IMPORTANTE: durante a manipulacao NAO transformamos a vela numa reta robotica.
+    // Mantemos a textura natural do candle (dev * maxDev) e ainda adicionamos uma OSCILACAO
+    // RAPIDA dedicada. Os componentes rapidos do ruido normal sao pequenos demais para vencer
+    // a deriva direcional, entao sem este termo a vela subiria/desceria em linha reta. Com ele,
+    // aparecem velas contrarias ocasionais e pausas — como um mercado real em tendencia — mas
+    // a deriva (target) sempre vence no conjunto, respeitando a direcao forcada pelo admin.
+    const jitter =
+      valueNoise(timestamp / 8 + symSeed, symSeed + 313) * 0.6 +
+      valueNoise(timestamp / 3 + symSeed, symSeed + 517) * 0.4
+    // Amplitude calibrada (~0.9x a banda escalada) para gerar recuos VISIVEIS candle a candle
+    // sem estourar a tendencia. Cresce com o easing para acompanhar a forca do movimento.
+    const naturalSwing = asset.basePrice * bandPct * mult * 0.9 * jitter * (0.4 + 0.6 * eased)
 
-    // Durante a manipulacao o ruido normal e SUPRIMIDO (blend de 0.92): a vela vai na direcao,
-    // com o respiro acima dando as retracoes/pausas naturais.
-    const suppress = 0.92 * eased
-    price = asset.basePrice + dev * maxDev * (1 - suppress)
-    price += dir * target + breath
+    price = asset.basePrice + dev * maxDev
+    price += dir * target + naturalSwing
 
     if (price <= 0) price = asset.basePrice * 0.5
   }
