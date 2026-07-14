@@ -165,6 +165,21 @@ function findManipulation(symbol: string, tMs: number): CandleManipulation | nul
   return null
 }
 
+// Onda triangular suave em [0,1] usada para criar "pausas": quando o mercado entra
+// numa janela de consolidacao, comprimimos a amplitude do ruido por alguns segundos,
+// simulando aquelas paradinhas rapidas antes de o preco voltar a andar.
+function pauseEnvelope(timestamp: number, seed: number): number {
+  // A cada ~9s decidimos se estamos numa fase de "andar" (1.0) ou "pausar" (~0.28).
+  const slot = Math.floor(timestamp / 9)
+  const r = srand(slot * 3.11 + seed)
+  const isPause = r > 0.72 // ~28% dos slots sao pausas curtas
+  if (!isPause) return 1
+  // Suaviza a entrada/saida da pausa para nao "travar" bruscamente.
+  const f = (timestamp / 9) - slot
+  const smooth = Math.sin(f * Math.PI) // 0 -> 1 -> 0 dentro do slot
+  return 1 - 0.72 * smooth
+}
+
 function getLivePrice(asset: OTCAsset, timestamp: number): number {
   const symSeed = asset.basePrice * 13.37
 
@@ -175,6 +190,10 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
   }
   // Normalize to roughly [-1, 1]
   dev = dev / PRICE_OCTAVE_TOTAL
+
+  // Aplica o "envelope de pausa": de tempos em tempos o preco quase para (retracao/
+  // consolidacao curta) em vez de flutuar sem parar, deixando o movimento mais natural.
+  dev *= pauseEnvelope(timestamp, symSeed)
 
   // A largura da banda ESCALA com a volatilidade do ativo (vol ~28..160 -> ~0.5%..2.4%).
   // Antes era fixa em 0.6% para todos, o que deixava o movimento de ativos muito volateis
@@ -192,13 +211,32 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
   const manip = ACTIVE_MANIPULATIONS.length ? findManipulation(asset.symbol, timestamp * 1000) : null
   if (manip) {
     const dur = Math.max(1, manip.endMs - manip.startMs)
-    // Progresso 0..1 dentro da janela; o vies cresce suavemente ate ~2.5x a banda,
-    // garantindo um movimento direcional forte e continuo (vela cheia pra cima/baixo).
     const progress = Math.min(1, Math.max(0, (timestamp * 1000 - manip.startMs) / dur))
-    const eased = progress * progress * (3 - 2 * progress) // smoothstep
+    // smoothstep: acelera no comeco e desacelera no fim, como um movimento real.
+    const eased = progress * progress * (3 - 2 * progress)
     const mult = INTENSITY_MULTIPLIER[manip.intensity || "MEDIUM"]
-    const strength = asset.basePrice * bandPct * mult * eased
-    price += manip.direction === "UP" ? strength : -strength
+    const dir = manip.direction === "UP" ? 1 : -1
+
+    // Deslocamento direcional total (a "trilha" que a vela deve seguir ate o fim da janela).
+    const target = asset.basePrice * bandPct * mult * eased
+
+    // Retracoes NATURAIS ao longo do caminho: em vez do ruido normal (que fazia a vela
+    // chacoalhar aleatoriamente pra cima e pra baixo sem rumo), somamos uma oscilacao lenta
+    // e centrada em zero (media ~0) sobre a trilha direcional. Como oscila para os dois lados
+    // com amplitude relevante, cria recuos VISIVEIS a favor do realismo, mas como a trilha
+    // (target) sempre cresce na direcao, o movimento geral continua indo para onde foi forcado.
+    const wobble =
+      valueNoise(timestamp / 6 + symSeed, symSeed + 99) * 0.6 +
+      valueNoise(timestamp / 2.5 + symSeed, symSeed + 271) * 0.4
+    // Amplitude do "respiro": ~35% da banda do ativo, escalado pela intensidade e pelo easing.
+    const breath = asset.basePrice * bandPct * mult * 0.35 * wobble * eased
+
+    // Durante a manipulacao o ruido normal e SUPRIMIDO (blend de 0.92): a vela vai na direcao,
+    // com o respiro acima dando as retracoes/pausas naturais.
+    const suppress = 0.92 * eased
+    price = asset.basePrice + dev * maxDev * (1 - suppress)
+    price += dir * target + breath
+
     if (price <= 0) price = asset.basePrice * 0.5
   }
 
