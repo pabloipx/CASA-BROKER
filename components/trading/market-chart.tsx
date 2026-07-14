@@ -2,6 +2,22 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { OTC_ASSETS, multiAssetEngine } from "@/lib/price-engine/multi-asset-engine"
+import { sma, bollinger, macd as computeMacd, fractals } from "@/lib/indicators"
+
+// Indicadores disponiveis no grafico
+type IndicatorKey = "ma" | "bb" | "fractal" | "macd"
+interface IndicatorState {
+  ma: boolean
+  bb: boolean
+  fractal: boolean
+  macd: boolean
+}
+const INDICATOR_META: { key: IndicatorKey; label: string; hint: string }[] = [
+  { key: "ma", label: "Medias moveis", hint: "SMA 9 / SMA 21" },
+  { key: "bb", label: "Bandas de Bollinger", hint: "20, 2 desvios" },
+  { key: "fractal", label: "Fractais", hint: "Bill Williams" },
+  { key: "macd", label: "MACD", hint: "12, 26, 9" },
+]
 
 // Mapa central de casas decimais por simbolo (fonte unica: engine de precos)
 const SYMBOL_DECIMALS: Record<string, number> = Object.fromEntries(
@@ -299,6 +315,21 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
   // Guarda as marcacoes por moeda+timeframe para que nao se percam ao trocar de ativo.
   const drawingsStoreRef = useRef<Map<string, Drawing[]>>(new Map())
   const prevDrawKeyRef = useRef<string>(`${symbol}::${timeframe}`)
+
+  // ===== INDICADORES TECNICOS =====
+  const [indicators, setIndicators] = useState<IndicatorState>({ ma: false, bb: false, fractal: false, macd: false })
+  const [showIndicators, setShowIndicators] = useState(false)
+  const indicatorsRef = useRef<IndicatorState>(indicators)
+  indicatorsRef.current = indicators
+  // Espelho da serie completa de velas (historico + vela em formacao) para recalcular indicadores.
+  const allCandlesRef = useRef<Candle[]>([])
+  // Series/marcadores dos indicadores (criados sob demanda no grafico lightweight-charts).
+  const maRefs = useRef<{ fast: any; slow: any } | null>(null)
+  const bbRefs = useRef<{ upper: any; middle: any; lower: any } | null>(null)
+  const macdRefs = useRef<{ line: any; signal: any; hist: any } | null>(null)
+  const fractalMarkersRef = useRef<any>(null)
+  const applyIndicatorsRef = useRef<null | (() => void)>(null)
+  const anyIndicatorOn = indicators.ma || indicators.bb || indicators.fractal || indicators.macd
 
   // Ao trocar de ativo/timeframe: salva as marcacoes atuais e restaura as do novo contexto.
   useEffect(() => {
@@ -890,6 +921,8 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
             })
           } catch {}
         }
+        // Espelha o historico para o calculo de indicadores.
+        allCandlesRef.current = baseData.slice()
         loadedSymbolRef.current = sym
         setLoading(false)
         // Redesenha linhas de operacao/overlays sobre os novos dados
@@ -954,6 +987,13 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
               close: formingRef.current.close,
             })
           } catch {}
+          // Mantem o espelho de velas sincronizado para o recalculo dos indicadores.
+          const arr = allCandlesRef.current
+          if (arr.length) {
+            const fc = formingRef.current
+            if (fc.time > arr[arr.length - 1].time) arr.push({ ...fc })
+            else arr[arr.length - 1] = { ...fc }
+          }
           // O auto-follow ao criar nova vela e tratado por shiftVisibleRangeOnNewBar.
           updateHeader(formingRef.current, price)
           updateCountdown(price)
@@ -1013,6 +1053,13 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
       seriesRef.current = null
       lwcRef.current = null
       markersApiRef.current = null
+      // O chart.remove() ja destruiu as series dos indicadores; apenas limpamos as refs
+      // para que sejam recriadas no proximo mount.
+      maRefs.current = null
+      bbRefs.current = null
+      macdRefs.current = null
+      fractalMarkersRef.current = null
+      allCandlesRef.current = []
       loadDataRef.current = null
       loadedSymbolRef.current = null
       tradeLinesRef.current.clear()
@@ -1030,6 +1077,133 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
     loadDataRef.current?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, timeframe])
+
+  // ===== INDICADORES: cria/remove series e recalcula sobre o historico atual =====
+  function applyIndicators() {
+    const chart = chartRef.current
+    const series = seriesRef.current
+    const lwc = lwcRef.current
+    if (!chart || !series || !lwc) return
+    const cfg = indicatorsRef.current
+    const candles = allCandlesRef.current
+    if (!candles.length) return
+
+    const baseLineOpts = {
+      lineWidth: 2 as const,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    }
+    const addLine = (opts: any, pane = 0) =>
+      lwc.LineSeries ? chart.addSeries(lwc.LineSeries, opts, pane) : (chart as any).addLineSeries(opts)
+    const addHist = (opts: any, pane = 0) =>
+      lwc.HistogramSeries ? chart.addSeries(lwc.HistogramSeries, opts, pane) : (chart as any).addHistogramSeries(opts)
+
+    // ---- Medias moveis (SMA 9 / 21) sobre o grafico principal ----
+    if (cfg.ma) {
+      if (!maRefs.current) {
+        maRefs.current = {
+          fast: addLine({ ...baseLineOpts, color: "#38bdf8" }, 0),
+          slow: addLine({ ...baseLineOpts, color: "#f59e0b" }, 0),
+        }
+      }
+      try {
+        maRefs.current.fast.setData(sma(candles, 9) as any)
+        maRefs.current.slow.setData(sma(candles, 21) as any)
+      } catch {}
+    } else if (maRefs.current) {
+      try { chart.removeSeries(maRefs.current.fast) } catch {}
+      try { chart.removeSeries(maRefs.current.slow) } catch {}
+      maRefs.current = null
+    }
+
+    // ---- Bandas de Bollinger (superior / media / inferior) ----
+    if (cfg.bb) {
+      if (!bbRefs.current) {
+        bbRefs.current = {
+          upper: addLine({ ...baseLineOpts, color: "rgba(139,180,248,0.9)", lineWidth: 1 }, 0),
+          middle: addLine({ ...baseLineOpts, color: "rgba(148,163,184,0.7)", lineWidth: 1, lineStyle: lwc.LineStyle?.Dashed ?? 1 }, 0),
+          lower: addLine({ ...baseLineOpts, color: "rgba(139,180,248,0.9)", lineWidth: 1 }, 0),
+        }
+      }
+      try {
+        const bb = bollinger(candles, 20, 2)
+        bbRefs.current.upper.setData(bb.upper as any)
+        bbRefs.current.middle.setData(bb.middle as any)
+        bbRefs.current.lower.setData(bb.lower as any)
+      } catch {}
+    } else if (bbRefs.current) {
+      try { chart.removeSeries(bbRefs.current.upper) } catch {}
+      try { chart.removeSeries(bbRefs.current.middle) } catch {}
+      try { chart.removeSeries(bbRefs.current.lower) } catch {}
+      bbRefs.current = null
+    }
+
+    // ---- MACD (painel separado, indice 1) ----
+    if (cfg.macd) {
+      if (!macdRefs.current) {
+        const dec = getDecimals(latest.current.symbol, latest.current.currentPrice)
+        const p = Math.min(dec + 1, 8)
+        const macdFmt = { type: "price" as const, precision: p, minMove: Number((1 / Math.pow(10, p)).toFixed(p)) }
+        macdRefs.current = {
+          hist: addHist({ priceFormat: macdFmt, priceLineVisible: false, lastValueVisible: false }, 1),
+          line: addLine({ ...baseLineOpts, color: "#38bdf8", lineWidth: 1, priceFormat: macdFmt }, 1),
+          signal: addLine({ ...baseLineOpts, color: "#f59e0b", lineWidth: 1, priceFormat: macdFmt }, 1),
+        }
+        // Painel principal maior; painel do MACD menor.
+        try {
+          const panes = chart.panes?.()
+          panes?.[0]?.setStretchFactor?.(3)
+          panes?.[1]?.setStretchFactor?.(1)
+        } catch {}
+      }
+      try {
+        const m = computeMacd(candles, 12, 26, 9)
+        macdRefs.current.hist.setData(m.histogram as any)
+        macdRefs.current.line.setData(m.macd as any)
+        macdRefs.current.signal.setData(m.signal as any)
+      } catch {}
+    } else if (macdRefs.current) {
+      try { chart.removeSeries(macdRefs.current.hist) } catch {}
+      try { chart.removeSeries(macdRefs.current.line) } catch {}
+      try { chart.removeSeries(macdRefs.current.signal) } catch {}
+      macdRefs.current = null
+    }
+
+    // ---- Fractais (marcadores no proprio candle) ----
+    if (cfg.fractal) {
+      try {
+        if (!fractalMarkersRef.current && lwc.createSeriesMarkers) {
+          fractalMarkersRef.current = lwc.createSeriesMarkers(series, [])
+        }
+        fractalMarkersRef.current?.setMarkers(fractals(candles) as any)
+      } catch {}
+    } else if (fractalMarkersRef.current) {
+      try { fractalMarkersRef.current.setMarkers([]) } catch {}
+    }
+  }
+  applyIndicatorsRef.current = applyIndicators
+
+  // Aplica imediatamente ao alternar um indicador ou quando a serie e (re)criada/recarregada.
+  useEffect(() => {
+    applyIndicatorsRef.current?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicators, seriesReady])
+
+  // Recalcula periodicamente para acompanhar a vela em formacao (atualizacao ao vivo).
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (
+        indicatorsRef.current.ma ||
+        indicatorsRef.current.bb ||
+        indicatorsRef.current.fractal ||
+        indicatorsRef.current.macd
+      ) {
+        applyIndicatorsRef.current?.()
+      }
+    }, 800)
+    return () => clearInterval(iv)
+  }, [])
 
   // ===== TRADE LINES + MARKERS (native, attached to chart) =====
   useEffect(() => {
@@ -1277,6 +1451,64 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
           </svg>
         </button>
+
+        <div className="my-0.5 h-px w-6 bg-[#2A2E39]" />
+
+        {/* Indicadores tecnicos */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Indicadores"
+            aria-label="Indicadores tecnicos"
+            onClick={() => setShowIndicators((s) => !s)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+            style={{
+              backgroundColor: showIndicators || anyIndicatorOn ? "#2563eb" : "transparent",
+              color: showIndicators || anyIndicatorOn ? "#fff" : "#94A3B8",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18" />
+              <path d="m19 9-5 5-4-4-3 3" />
+            </svg>
+          </button>
+          {showIndicators && (
+            <div className="absolute left-10 top-0 z-40 w-56 rounded-xl border border-[#2A2E39] bg-[#0d0d0f] p-2 shadow-xl">
+              <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-[#787B86]">
+                Indicadores
+              </div>
+              {INDICATOR_META.map((ind) => {
+                const active = indicators[ind.key]
+                return (
+                  <button
+                    key={ind.key}
+                    type="button"
+                    onClick={() => setIndicators((prev) => ({ ...prev, [ind.key]: !prev[ind.key] }))}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5"
+                  >
+                    <span
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
+                      style={{
+                        borderColor: active ? "#2563eb" : "#363A45",
+                        backgroundColor: active ? "#2563eb" : "transparent",
+                      }}
+                    >
+                      {active && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="flex flex-col">
+                      <span className="text-[13px] font-medium text-[#E2E8F0]">{ind.label}</span>
+                      <span className="text-[10px] text-[#787B86]">{ind.hint}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Relogio minimizado (UTC-3) no canto inferior esquerdo */}
