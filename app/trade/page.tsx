@@ -1369,7 +1369,11 @@ export default function TradePage() {
                         <div className="text-left">
                           <p className="text-white font-semibold text-sm">{asset.name}</p>
                           <p className="text-gray-400 text-xs">
-                            {closed ? "Mercado fechado" : isRealAsset(asset.symbol) ? "Ao vivo · Opção binária" : "Opção binária"}
+                            {closed
+                              ? "Mercado fechado"
+                              : isRealAsset(asset.symbol)
+                                ? "Cripto · Tempo real"
+                                : "OTC · Opção binária"}
                           </p>
                         </div>
                       </div>
