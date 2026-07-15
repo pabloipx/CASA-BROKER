@@ -1337,37 +1337,50 @@ export default function TradePage() {
                       : "Nenhum ativo encontrado."}
                   </p>
                 )}
-                {filteredAssets.map((asset) => (
-                  <button
-                    key={asset.symbol}
-                    onClick={() => {
-                      setSelectedSymbol(asset.symbol)
-                      setShowAssetModal(false)
-                      setAssetSearch("")
-                    }}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors ${
-                      selectedSymbol === asset.symbol ? "bg-[#26a69a]/20 border border-[#26a69a]/50" : ""
-                    }`}
-                    style={{ backgroundColor: selectedSymbol === asset.symbol ? undefined : "#1a1a1e" }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
-                        <Image
-                          src={asset.logo || "/placeholder.svg"}
-                          alt={asset.name}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
+                {filteredAssets.map((asset) => {
+                  // No Mercado Aberto, apenas ativos com feed REAL (cripto/Binance) ficam ativos.
+                  // Os demais (forex/ações, sem cotação real ao vivo) aparecem como "Mercado fechado".
+                  const closed = assetTab === "open" && !isRealAsset(asset.symbol)
+                  return (
+                    <button
+                      key={asset.symbol}
+                      disabled={closed}
+                      onClick={() => {
+                        if (closed) return
+                        setSelectedSymbol(asset.symbol)
+                        setShowAssetModal(false)
+                        setAssetSearch("")
+                      }}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors ${
+                        selectedSymbol === asset.symbol ? "bg-[#26a69a]/20 border border-[#26a69a]/50" : ""
+                      } ${closed ? "opacity-50 cursor-not-allowed" : ""}`}
+                      style={{ backgroundColor: selectedSymbol === asset.symbol ? undefined : "#1a1a1e" }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
+                          <Image
+                            src={asset.logo || "/placeholder.svg"}
+                            alt={asset.name}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-white font-semibold text-sm">{asset.name}</p>
+                          <p className="text-gray-400 text-xs">
+                            {closed ? "Mercado fechado" : isRealAsset(asset.symbol) ? "Ao vivo · Opção binária" : "Opção binária"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <p className="text-white font-semibold text-sm">{asset.name}</p>
-                        <p className="text-gray-400 text-xs">Opção binária</p>
-                      </div>
-                    </div>
-                    <span className="text-blue-500 font-semibold text-sm">{asset.payout}%</span>
-                  </button>
-                ))}
+                      {closed ? (
+                        <span className="text-gray-500 font-medium text-xs">Fechado</span>
+                      ) : (
+                        <span className="text-blue-500 font-semibold text-sm">{asset.payout}%</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
