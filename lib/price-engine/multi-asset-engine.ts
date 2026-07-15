@@ -105,21 +105,43 @@ function valueNoise(x: number, seed: number): number {
   return (a * (1 - u) + b * u) * 2 - 1
 }
 
-// Octaves: longer periods set the trend, shorter periods add live wiggle every tick.
-// Perfil estilo IQ Option: o preco e fortemente DIRECIONAL — segue uma tendencia por varios
-// segundos com poucas reversoes (uma a cada ~10s nos majors), em vez de chacoalhar rapido para
-// cima/baixo. As oitavas lentas dominam; as rapidas ficam bem discretas, apenas o suficiente
-// para os ativos de preco minusculo (PEPE/SHIB) continuarem ticando sem congelar.
-const PRICE_OCTAVES = [
-  { period: 3000, amp: 1.15 }, // ~50 min macro trend
-  { period: 1200, amp: 0.8 }, // ~20 min swing
-  { period: 450, amp: 0.45 }, // ~7 min move
-  { period: 150, amp: 0.26 }, // ~2.5 min
-  { period: 50, amp: 0.15 }, // ~50 s
-  { period: 16, amp: 0.09 }, // ~16 s
-  { period: 5, amp: 0.05 }, // ~5 s micro
+// ============================================================================
+// DUAS CAMADAS: TENDENCIA + TEXTURA
+// ============================================================================
+// O erro do modelo antigo era somar TODAS as oitavas, normalizar para [-1,1] e
+// prender o preco numa banda fixa e estreita (~0.6%). Isso deixava o mercado SEMPRE
+// lateral, sem tendencias longas (altista/baixista).
+//
+// Agora separamos em duas camadas independentes:
+//
+//  1) TENDENCIA (trend): ondas de PERIODO LONGO com amplitude GRANDE, medida em % do
+//     preco. Sao elas que levam o preco para cima/baixo por varios minutos, criando
+//     movimentos direcionais claros (subidas, quedas, topos, fundos). NAO sao presas
+//     por banda estreita — so ha uma trava de seguranca bem larga (+-18%).
+//
+//  2) TEXTURA (texture): ruido RAPIDO de amplitude pequena que da a "vida" tick a tick
+//     (as pequenas oscilacoes dentro de cada vela), sem mascarar a tendencia.
+//
+// Ambas continuam PURAS e deterministicas (funcao de asset+timestamp), O(1) e estaveis
+// (senoide/valueNoise sao limitados), entao funcionam bem em serverless (sem estado).
+
+// Camada de tendencia — amplitude relativa (fracao do movimento total de tendencia).
+// Periodos longos (varios minutos) para gerar tendencias sustentadas.
+const TREND_OCTAVES = [
+  { period: 2600, amp: 1.0 }, // ~43 min: macro tendencia
+  { period: 900, amp: 0.6 }, // ~15 min: swing principal
+  { period: 320, amp: 0.34 }, // ~5 min: perna de tendencia
+  { period: 110, amp: 0.18 }, // ~2 min: micro tendencia
 ]
-const PRICE_OCTAVE_TOTAL = PRICE_OCTAVES.reduce((s, o) => s + o.amp, 0)
+const TREND_OCTAVE_TOTAL = TREND_OCTAVES.reduce((s, o) => s + o.amp, 0)
+
+// Camada de textura — ruido rapido (dentro da vela), amplitude relativa pequena.
+const TEXTURE_OCTAVES = [
+  { period: 34, amp: 0.5 }, // ~34 s
+  { period: 12, amp: 0.3 }, // ~12 s
+  { period: 4.5, amp: 0.2 }, // ~4.5 s micro
+]
+const TEXTURE_OCTAVE_TOTAL = TEXTURE_OCTAVES.reduce((s, o) => s + o.amp, 0)
 
 // =============================================
 // MANIPULACAO DE VELAS (controle do admin)
@@ -183,29 +205,38 @@ function pauseEnvelope(timestamp: number, seed: number): number {
 function getLivePrice(asset: OTCAsset, timestamp: number): number {
   const symSeed = asset.basePrice * 13.37
 
-  let dev = 0
-  for (let i = 0; i < PRICE_OCTAVES.length; i++) {
-    const { period, amp } = PRICE_OCTAVES[i]
-    dev += valueNoise(timestamp / period + i * 137.5 + symSeed, symSeed + i) * amp
+  // ---- CAMADA 1: TENDENCIA (movimento amplo e direcional) ----
+  // Cada ativo tem um deslocamento de fase proprio (por symSeed), entao ativos diferentes
+  // estao em tendencias diferentes ao mesmo tempo (um subindo, outro caindo, outro lateral).
+  let trend = 0
+  for (let i = 0; i < TREND_OCTAVES.length; i++) {
+    const { period, amp } = TREND_OCTAVES[i]
+    trend += valueNoise(timestamp / period + i * 137.5 + symSeed, symSeed + i) * amp
   }
-  // Normalize to roughly [-1, 1]
-  dev = dev / PRICE_OCTAVE_TOTAL
+  trend = trend / TREND_OCTAVE_TOTAL // ~[-1, 1]
 
-  // Aplica o "envelope de pausa": de tempos em tempos o preco quase para (retracao/
-  // consolidacao curta) em vez de flutuar sem parar, deixando o movimento mais natural.
-  dev *= pauseEnvelope(timestamp, symSeed)
+  // Amplitude da tendencia em % do preco: escala com a volatilidade do ativo.
+  // vol ~28..160 -> ~3.5%..10%. E aqui que nascem as subidas/quedas visiveis por minutos.
+  const trendPct = 0.03 + (asset.volatility / 100) * 0.045
+  const trendDev = trend * asset.basePrice * trendPct
 
-  // A largura da banda ESCALA com a volatilidade do ativo (vol ~28..160 -> ~0.5%..2.4%).
-  // Antes era fixa em 0.6% para todos, o que deixava o movimento de ativos muito volateis
-  // (cripto) pequeno demais para ser visivel tick a tick. Agora cada ativo se move de forma
-  // condizente com seu perfil.
-  const bandPct = 0.004 + (asset.volatility / 100) * 0.012
-  const maxDev = asset.basePrice * bandPct
-  let price = asset.basePrice + dev * maxDev
+  // ---- CAMADA 2: TEXTURA (ruido rapido dentro da vela) ----
+  let texture = 0
+  for (let i = 0; i < TEXTURE_OCTAVES.length; i++) {
+    const { period, amp } = TEXTURE_OCTAVES[i]
+    texture += valueNoise(timestamp / period + i * 71.3 + symSeed, symSeed + 900 + i) * amp
+  }
+  texture = texture / TEXTURE_OCTAVE_TOTAL // ~[-1, 1]
+  // Textura reduzida durante pausas curtas, para dar aquelas "paradinhas" naturais.
+  texture *= pauseEnvelope(timestamp, symSeed)
+  const texturePct = 0.004 + (asset.volatility / 100) * 0.01
+  const textureDev = texture * asset.basePrice * texturePct
 
-  // Hard cap proporcional a propria banda, para nunca "estourar" a escala do grafico.
-  const hardCap = asset.basePrice * bandPct * 1.3
-  price = Math.max(asset.basePrice - hardCap, Math.min(asset.basePrice + hardCap, price))
+  let price = asset.basePrice + trendDev + textureDev
+
+  // Trava de seguranca BEM LARGA (so evita estourar a escala em casos extremos).
+  const safeCap = asset.basePrice * 0.18
+  price = Math.max(asset.basePrice - safeCap, Math.min(asset.basePrice + safeCap, price))
 
   // ---- Aplica manipulacao do admin, se ativa para este ativo/instante ----
   const manip = ACTIVE_MANIPULATIONS.length ? findManipulation(asset.symbol, timestamp * 1000) : null
@@ -218,22 +249,17 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
     const dir = manip.direction === "UP" ? 1 : -1
 
     // Deslocamento direcional total (a "trilha" que a vela deve seguir ate o fim da janela).
-    const target = asset.basePrice * bandPct * mult * eased
+    const target = asset.basePrice * texturePct * 6 * mult * eased
 
-    // IMPORTANTE: durante a manipulacao NAO transformamos a vela numa reta robotica.
-    // Mantemos a textura natural do candle (dev * maxDev) e ainda adicionamos uma OSCILACAO
-    // RAPIDA dedicada. Os componentes rapidos do ruido normal sao pequenos demais para vencer
-    // a deriva direcional, entao sem este termo a vela subiria/desceria em linha reta. Com ele,
-    // aparecem velas contrarias ocasionais e pausas — como um mercado real em tendencia — mas
-    // a deriva (target) sempre vence no conjunto, respeitando a direcao forcada pelo admin.
+    // Mantem a textura natural do candle e adiciona recuos VISIVEIS candle a candle, mas a
+    // deriva direcional (target) sempre vence no conjunto, respeitando a direcao do admin.
     const jitter =
       valueNoise(timestamp / 8 + symSeed, symSeed + 313) * 0.6 +
       valueNoise(timestamp / 3 + symSeed, symSeed + 517) * 0.4
-    // Amplitude calibrada (~0.9x a banda escalada) para gerar recuos VISIVEIS candle a candle
-    // sem estourar a tendencia. Cresce com o easing para acompanhar a forca do movimento.
-    const naturalSwing = asset.basePrice * bandPct * mult * 0.9 * jitter * (0.4 + 0.6 * eased)
+    const naturalSwing = asset.basePrice * texturePct * 6 * mult * 0.9 * jitter * (0.4 + 0.6 * eased)
 
-    price = asset.basePrice + dev * maxDev
+    // Durante a manipulacao, a tendencia natural fica reduzida para nao brigar com a direcao forcada.
+    price = asset.basePrice + trendDev * 0.3 + textureDev
     price += dir * target + naturalSwing
 
     if (price <= 0) price = asset.basePrice * 0.5

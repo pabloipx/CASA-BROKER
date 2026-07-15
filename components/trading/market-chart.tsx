@@ -972,7 +972,17 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
           const newTime = Math.floor(nowSec / tf) * tf
           const f = formingRef.current
           if (newTime > f.time) {
-            formingRef.current = { time: newTime, open: price, high: price, low: price, close: price }
+            // Ancora o OPEN da nova vela no preco DETERMINISTICO real do inicio da vela
+            // (mesma fonte usada nas velas historicas). Isso garante continuidade: a nova vela
+            // comeca exatamente onde a anterior fecharia no relogio, e sincroniza o preco
+            // suavizado com o tempo real (elimina o "arraste" da suavizacao entre velas).
+            let openPrice = price
+            try {
+              openPrice = multiAssetEngine.getPriceAtTime(sym as any, newTime) || price
+            } catch {}
+            smoothPriceRef.current = openPrice
+            prevTargetRef.current = openPrice
+            formingRef.current = { time: newTime, open: openPrice, high: openPrice, low: openPrice, close: openPrice }
           } else {
             f.close = price
             f.high = Math.max(f.high, price)
