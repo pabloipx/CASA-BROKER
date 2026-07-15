@@ -19,6 +19,21 @@ const INDICATOR_META: { key: IndicatorKey; label: string; hint: string }[] = [
   { key: "macd", label: "MACD", hint: "12, 26, 9" },
 ]
 
+// PERIODO: janela de tempo visivel do grafico (quanto de historico aparece / zoom),
+// estilo IQ Option. Diferente do timeframe da vela. A ordem segue o layout de 2 colunas
+// da referencia (linha a linha): col.esq | col.dir.
+const PERIOD_OPTIONS: { label: string; seconds: number }[] = [
+  { label: "30 dias", seconds: 2592000 },
+  { label: "15 min", seconds: 900 },
+  { label: "1 dia", seconds: 86400 },
+  { label: "5 min", seconds: 300 },
+  { label: "3 horas", seconds: 10800 },
+  { label: "2 min", seconds: 120 },
+  { label: "30 min", seconds: 1800 },
+]
+// Numero minimo de velas sempre visiveis (evita zoom exagerado quando periodo < timeframe).
+const MIN_VISIBLE_CANDLES = 14
+
 // Mapa central de casas decimais por simbolo (fonte unica: engine de precos)
 const SYMBOL_DECIMALS: Record<string, number> = Object.fromEntries(
   OTC_ASSETS.map((a) => [a.symbol, a.decimals]),
@@ -330,6 +345,27 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
   const fractalMarkersRef = useRef<any>(null)
   const applyIndicatorsRef = useRef<null | (() => void)>(null)
   const anyIndicatorOn = indicators.ma || indicators.bb || indicators.fractal || indicators.macd
+
+  // ===== PERIODO (janela de tempo visivel) =====
+  const [periodSec, setPeriodSec] = useState<number>(1800) // padrao: 30 min
+  const [showPeriod, setShowPeriod] = useState(false)
+  const periodRef = useRef<number>(periodSec)
+  periodRef.current = periodSec
+
+  // Reaplica a janela visivel ao trocar o periodo (sem recarregar os dados).
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    try {
+      const total = allCandlesRef.current.length
+      if (total === 0) return
+      const tf = latest.current.timeframe
+      const rightBars = tf === 60 ? 5 : 4
+      const wanted = Math.round(periodSec / tf)
+      const visibleCount = Math.max(MIN_VISIBLE_CANDLES, Math.min(total, wanted))
+      chart.timeScale().setVisibleLogicalRange({ from: total - visibleCount, to: total + rightBars })
+    } catch {}
+  }, [periodSec])
 
   // Ao trocar de ativo/timeframe: salva as marcacoes atuais e restaura as do novo contexto.
   useEffect(() => {
@@ -913,8 +949,9 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
           try {
             const total = baseData.length
             const rightBars = tf === 60 ? 5 : 4
-            const fit = Math.max(20, Math.floor((containerRef.current?.clientWidth || 600) / bs))
-            const visibleCount = Math.min(total, fit - rightBars)
+            // Numero de velas visiveis = periodo escolhido / tamanho da vela (clampado).
+            const wanted = Math.round(periodRef.current / tf)
+            const visibleCount = Math.max(MIN_VISIBLE_CANDLES, Math.min(total, wanted))
             chartRef.current.timeScale().setVisibleLogicalRange({
               from: total - visibleCount,
               to: total + rightBars,
@@ -1516,6 +1553,58 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
                   </button>
                 )
               })}
+            </div>
+          )}
+        </div>
+
+        <div className="my-0.5 h-px w-6 bg-[#2A2E39]" />
+
+        {/* PERIODO (janela de tempo visivel, estilo IQ Option) */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Periodo do grafico"
+            aria-label="Periodo do grafico"
+            onClick={() => setShowPeriod((s) => !s)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+            style={{
+              backgroundColor: showPeriod ? "#2563eb" : "transparent",
+              color: showPeriod ? "#fff" : "#94A3B8",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </button>
+          {showPeriod && (
+            <div className="absolute left-10 bottom-0 z-40 w-64 rounded-xl border border-[#2A2E39] bg-[#0d0d0f] p-3 shadow-xl">
+              <div className="text-[13px] font-bold uppercase tracking-wide text-[#E2E8F0]">Periodo</div>
+              <div className="mt-1 mb-2.5 text-[11px] leading-snug text-[#787B86]">
+                O periodo para o qual o grafico e mostrado
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {PERIOD_OPTIONS.map((p) => {
+                  const active = periodSec === p.seconds
+                  return (
+                    <button
+                      key={p.seconds}
+                      type="button"
+                      onClick={() => {
+                        setPeriodSec(p.seconds)
+                        setShowPeriod(false)
+                      }}
+                      className="rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors"
+                      style={{
+                        backgroundColor: active ? "#2563eb" : "transparent",
+                        color: active ? "#fff" : "#CBD5E1",
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
