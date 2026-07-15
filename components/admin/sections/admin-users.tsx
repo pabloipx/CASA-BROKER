@@ -1,7 +1,26 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Search, MoreVertical, Ban, CheckCircle, Edit, RefreshCw, DollarSign, AlertCircle } from "lucide-react"
+import {
+  Search,
+  MoreVertical,
+  Ban,
+  CheckCircle,
+  Edit,
+  RefreshCw,
+  DollarSign,
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Mail,
+  Phone,
+  Fingerprint,
+  Calendar,
+  Users as UsersIcon,
+} from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,7 +46,70 @@ interface User {
   balance_demo: number
 }
 
+interface UserDetail {
+  profile: {
+    id: string
+    email: string
+    full_name: string
+    phone: string
+    cpf: string
+    birth_date: string | null
+    is_admin: boolean
+    is_verified: boolean
+    is_blocked: boolean
+    kyc_status: string
+    is_affiliate: boolean
+    affiliate_code: string | null
+    affiliate_status: string
+    affiliate_balance: number
+    affiliate_total_earned: number
+    affiliate_total_referrals: number
+    referred_by: string | null
+    created_at: string
+    last_seen_at: string | null
+    balance_real: number
+    balance_demo: number
+    currency: string
+  }
+  stats: {
+    totalTrades: number
+    wins: number
+    losses: number
+    pending: number
+    winRate: number
+    totalVolume: number
+    netProfit: number
+    totalDeposited: number
+    totalWithdrawn: number
+    depositCount: number
+    withdrawalCount: number
+  }
+  recentTrades: {
+    id: string
+    symbol: string
+    direction: string
+    amount: number
+    result: string
+    profit: number
+    created_at: string
+  }[]
+}
+
 const ADMIN_PASSWORD = "Admin123!"
+
+function fmtBRL(v: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0)
+}
+
+function fmtDate(v: string | null) {
+  if (!v) return "—"
+  return new Date(v).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+}
+
+function fmtDateShort(v: string | null) {
+  if (!v) return "—"
+  return new Date(v).toLocaleDateString("pt-BR")
+}
 
 // Considera o usuário online se teve atividade nos últimos 2 minutos
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000
@@ -65,6 +147,8 @@ export function AdminUsers() {
     is_verified: false,
   })
   const [saving, setSaving] = useState(false)
+  const [detail, setDetail] = useState<UserDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -115,6 +199,23 @@ export function AdminUsers() {
       is_verified: user.is_verified || false,
     })
     setShowEditModal(true)
+    loadUserDetail(user.id)
+  }
+
+  const loadUserDetail = async (userId: string) => {
+    setDetail(null)
+    setDetailLoading(true)
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        headers: { "x-admin-token": ADMIN_PASSWORD },
+      })
+      const data = await res.json()
+      if (res.ok) setDetail(data)
+    } catch {
+      // silencioso — o formulário de edição continua funcionando sem os detalhes
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
   const handleSaveUser = async () => {
@@ -434,8 +535,163 @@ export function AdminUsers() {
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0D1117] border border-[#1E2430] rounded-xl p-4 md:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">Editar Usuário</h3>
+          <div className="bg-[#0D1117] border border-[#1E2430] rounded-xl p-4 md:p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">Detalhes do Usuário</h3>
+
+            {/* ==== Painel de detalhes (somente leitura) ==== */}
+            {detailLoading && (
+              <div className="mb-5 flex items-center gap-2 text-sm text-gray-400">
+                <RefreshCw className="h-4 w-4 animate-spin" /> Carregando dados do usuário...
+              </div>
+            )}
+
+            {detail && (
+              <div className="mb-6 space-y-4">
+                {/* Cabeçalho com avatar/identidade */}
+                <div className="flex items-center gap-4 rounded-xl border border-[#1E2430] bg-[#1E2430]/40 p-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
+                    {(detail.profile.full_name || detail.profile.email || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-base font-semibold text-white">
+                        {detail.profile.full_name || "Sem nome"}
+                      </p>
+                      {isUserOnline(detail.profile.last_seen_at) && <OnlineBadge />}
+                      {detail.profile.is_admin && (
+                        <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold text-purple-300">
+                          ADMIN
+                        </span>
+                      )}
+                    </div>
+                    <p className="flex items-center gap-1.5 truncate text-sm text-gray-400">
+                      <Mail className="h-3.5 w-3.5" /> {detail.profile.email}
+                    </p>
+                  </div>
+                  <div className="hidden shrink-0 text-right sm:block">
+                    <p className="text-xs text-gray-500">Saldo real</p>
+                    <p className="text-lg font-bold text-green-400">{fmtBRL(detail.profile.balance_real)}</p>
+                    <p className="text-[11px] text-gray-500">Demo {fmtBRL(detail.profile.balance_demo)}</p>
+                  </div>
+                </div>
+
+                {/* Grade de dados cadastrais */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <InfoItem icon={<Phone className="h-3.5 w-3.5" />} label="Telefone" value={detail.profile.phone || "—"} />
+                  <InfoItem icon={<Fingerprint className="h-3.5 w-3.5" />} label="CPF" value={detail.profile.cpf || "—"} />
+                  <InfoItem
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                    label="Nascimento"
+                    value={fmtDateShort(detail.profile.birth_date)}
+                  />
+                  <InfoItem
+                    icon={<CheckCircle className="h-3.5 w-3.5" />}
+                    label="KYC"
+                    value={detail.profile.kyc_status || "pending"}
+                  />
+                  <InfoItem
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                    label="Cadastro"
+                    value={fmtDateShort(detail.profile.created_at)}
+                  />
+                  <InfoItem
+                    icon={<Activity className="h-3.5 w-3.5" />}
+                    label="Visto por último"
+                    value={fmtDate(detail.profile.last_seen_at)}
+                  />
+                  <InfoItem
+                    icon={<UsersIcon className="h-3.5 w-3.5" />}
+                    label="Afiliado"
+                    value={detail.profile.is_affiliate ? detail.profile.affiliate_code || "sim" : "não"}
+                  />
+                  <InfoItem
+                    icon={<UsersIcon className="h-3.5 w-3.5" />}
+                    label="Indicações"
+                    value={String(detail.profile.affiliate_total_referrals)}
+                  />
+                  <InfoItem
+                    icon={<DollarSign className="h-3.5 w-3.5" />}
+                    label="Ganhos afiliado"
+                    value={fmtBRL(detail.profile.affiliate_total_earned)}
+                  />
+                </div>
+
+                {/* Estatísticas de operações */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <StatCard label="Operações" value={String(detail.stats.totalTrades)} icon={<Activity className="h-4 w-4" />} />
+                  <StatCard
+                    label="Taxa de acerto"
+                    value={`${detail.stats.winRate}%`}
+                    sub={`${detail.stats.wins}V / ${detail.stats.losses}D`}
+                    icon={<TrendingUp className="h-4 w-4" />}
+                    tone="blue"
+                  />
+                  <StatCard
+                    label="Volume"
+                    value={fmtBRL(detail.stats.totalVolume)}
+                    icon={<DollarSign className="h-4 w-4" />}
+                  />
+                  <StatCard
+                    label="Resultado líq."
+                    value={fmtBRL(detail.stats.netProfit)}
+                    icon={detail.stats.netProfit >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                    tone={detail.stats.netProfit >= 0 ? "green" : "red"}
+                  />
+                </div>
+
+                {/* Depósitos / Saques */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-3 rounded-xl border border-[#1E2430] bg-[#1E2430]/40 p-3">
+                    <ArrowUpCircle className="h-8 w-8 text-green-400" />
+                    <div>
+                      <p className="text-xs text-gray-400">Total depositado ({detail.stats.depositCount})</p>
+                      <p className="text-base font-bold text-white">{fmtBRL(detail.stats.totalDeposited)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl border border-[#1E2430] bg-[#1E2430]/40 p-3">
+                    <ArrowDownCircle className="h-8 w-8 text-orange-400" />
+                    <div>
+                      <p className="text-xs text-gray-400">Total sacado ({detail.stats.withdrawalCount})</p>
+                      <p className="text-base font-bold text-white">{fmtBRL(detail.stats.totalWithdrawn)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Operações recentes */}
+                {detail.recentTrades.length > 0 && (
+                  <div className="rounded-xl border border-[#1E2430] bg-[#1E2430]/40 p-3">
+                    <p className="mb-2 text-sm font-medium text-gray-400">Operações recentes</p>
+                    <div className="space-y-1.5">
+                      {detail.recentTrades.map((t) => (
+                        <div key={t.id} className="flex items-center justify-between rounded-lg bg-[#0D1117] px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            {t.direction === "CALL" ? (
+                              <TrendingUp className="h-3.5 w-3.5 text-green-400" />
+                            ) : (
+                              <TrendingDown className="h-3.5 w-3.5 text-red-400" />
+                            )}
+                            <span className="font-medium text-white">{t.symbol}</span>
+                            <span className="text-xs text-gray-500">{fmtBRL(t.amount)}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`text-xs font-semibold ${
+                                t.result === "win" ? "text-green-400" : t.result === "loss" ? "text-red-400" : "text-gray-500"
+                              }`}
+                            >
+                              {t.result === "win" ? "Ganhou" : t.result === "loss" ? "Perdeu" : "Pendente"}
+                            </span>
+                            <span className="text-[11px] text-gray-500">{fmtDate(t.created_at)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <h3 className="mb-4 border-t border-[#1E2430] pt-5 text-base font-bold text-white">Editar</h3>
 
             <div className="space-y-4">
               <div className="bg-[#1E2430]/50 rounded-lg p-4">
@@ -520,7 +776,10 @@ export function AdminUsers() {
 
             <div className="flex gap-3 mt-6">
               <Button
-                onClick={() => setShowEditModal(false)}
+                onClick={() => {
+                  setShowEditModal(false)
+                  setDetail(null)
+                }}
                 variant="outline"
                 className="flex-1 border-[#2A3142] bg-transparent text-gray-300 hover:text-white"
               >
@@ -537,6 +796,53 @@ export function AdminUsers() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function InfoItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-[#1E2430] bg-[#1E2430]/40 p-2.5">
+      <p className="flex items-center gap-1.5 text-[11px] text-gray-500">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-sm font-medium text-white" title={value}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  icon,
+  tone = "neutral",
+}: {
+  label: string
+  value: string
+  sub?: string
+  icon: React.ReactNode
+  tone?: "neutral" | "green" | "red" | "blue"
+}) {
+  const toneClass =
+    tone === "green"
+      ? "text-green-400"
+      : tone === "red"
+        ? "text-red-400"
+        : tone === "blue"
+          ? "text-blue-400"
+          : "text-white"
+  return (
+    <div className="rounded-xl border border-[#1E2430] bg-[#1E2430]/40 p-3">
+      <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+        <span className={toneClass}>{icon}</span>
+        {label}
+      </div>
+      <p className={`mt-1 text-lg font-bold ${toneClass}`}>{value}</p>
+      {sub && <p className="text-[11px] text-gray-500">{sub}</p>}
     </div>
   )
 }
