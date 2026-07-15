@@ -2,7 +2,18 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { OTC_ASSETS, multiAssetEngine } from "@/lib/price-engine/multi-asset-engine"
+import {
+  realMarketEngine,
+  isRealAsset,
+  setActive as setRealActive,
+  subscribe as subscribeReal,
+} from "@/lib/market-data/real-market"
 import { sma, bollinger, macd as computeMacd, fractals } from "@/lib/indicators"
+
+// Fonte de precos do grafico: real (Binance) para Mercado Aberto, sintetico para OTC.
+function chartEngineFor(symbol: string): any {
+  return isRealAsset(symbol) ? realMarketEngine : multiAssetEngine
+}
 
 // Indicadores disponiveis no grafico
 type IndicatorKey = "ma" | "bb" | "fractal" | "macd"
@@ -18,6 +29,21 @@ const INDICATOR_META: { key: IndicatorKey; label: string; hint: string }[] = [
   { key: "fractal", label: "Fractais", hint: "Bill Williams" },
   { key: "macd", label: "MACD", hint: "12, 26, 9" },
 ]
+
+// PERIODO: janela de tempo visivel do grafico (quanto de historico aparece / zoom),
+// estilo IQ Option. Diferente do timeframe da vela. A ordem segue o layout de 2 colunas
+// da referencia (linha a linha): col.esq | col.dir.
+const PERIOD_OPTIONS: { label: string; seconds: number }[] = [
+  { label: "30 dias", seconds: 2592000 },
+  { label: "15 min", seconds: 900 },
+  { label: "1 dia", seconds: 86400 },
+  { label: "5 min", seconds: 300 },
+  { label: "3 horas", seconds: 10800 },
+  { label: "2 min", seconds: 120 },
+  { label: "30 min", seconds: 1800 },
+]
+// Numero minimo de velas sempre visiveis (evita zoom exagerado quando periodo < timeframe).
+const MIN_VISIBLE_CANDLES = 14
 
 // Mapa central de casas decimais por simbolo (fonte unica: engine de precos)
 const SYMBOL_DECIMALS: Record<string, number> = Object.fromEntries(
@@ -330,6 +356,27 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
   const fractalMarkersRef = useRef<any>(null)
   const applyIndicatorsRef = useRef<null | (() => void)>(null)
   const anyIndicatorOn = indicators.ma || indicators.bb || indicators.fractal || indicators.macd
+
+  // ===== PERIODO (janela de tempo visivel) =====
+  const [periodSec, setPeriodSec] = useState<number>(1800) // padrao: 30 min
+  const [showPeriod, setShowPeriod] = useState(false)
+  const periodRef = useRef<number>(periodSec)
+  periodRef.current = periodSec
+
+  // Reaplica a janela visivel ao trocar o periodo (sem recarregar os dados).
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    try {
+      const total = allCandlesRef.current.length
+      if (total === 0) return
+      const tf = latest.current.timeframe
+      const rightBars = tf === 60 ? 5 : 4
+      const wanted = Math.round(periodSec / tf)
+      const visibleCount = Math.max(MIN_VISIBLE_CANDLES, Math.min(total, wanted))
+      chart.timeScale().setVisibleLogicalRange({ from: total - visibleCount, to: total + rightBars })
+    } catch {}
+  }, [periodSec])
 
   // Ao trocar de ativo/timeframe: salva as marcacoes atuais e restaura as do novo contexto.
   useEffect(() => {
@@ -686,6 +733,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
     let lastFrameAt = 0
     let watchdog: ReturnType<typeof setInterval> | null = null
     let onVisible: (() => void) | null = null
+    let unsubReal: (() => void) | null = null
 
     async function boot() {
       if (!containerRef.current || dead) return
@@ -889,10 +937,18 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
         // localmente. Isso remove a dependencia do endpoint serverless (/api/global/history),
         // cujo cold start em producao segurava o grafico vazio/travado. Resultado: o grafico
         // aparece ja carregado na entrada e a troca de ativo e imediata.
+        const real = isRealAsset(sym)
         let baseData: Candle[] = []
         try {
-          baseData = dedup(multiAssetEngine.getHistory(sym as any, tf) as Candle[])
+          baseData = dedup(chartEngineFor(sym).getHistory(sym as any, tf) as Candle[])
         } catch {}
+        // Para ativos REAIS ainda sem dados da Binance: mantem "carregando" e aguarda o
+        // poller — a subscription reexecuta loadData quando as velas reais chegarem.
+        // (Nao caimos no historico sintetico, para nao misturar dados reais com fake.)
+        if (baseData.length === 0 && real) {
+          setLoading(true)
+          return
+        }
         if (baseData.length === 0) baseData = dedup(latest.current.candles || [])
         if (dead || myToken !== loadToken || !seriesRef.current) return
 
@@ -913,8 +969,9 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
           try {
             const total = baseData.length
             const rightBars = tf === 60 ? 5 : 4
-            const fit = Math.max(20, Math.floor((containerRef.current?.clientWidth || 600) / bs))
-            const visibleCount = Math.min(total, fit - rightBars)
+            // Numero de velas visiveis = periodo escolhido / tamanho da vela (clampado).
+            const wanted = Math.round(periodRef.current / tf)
+            const visibleCount = Math.max(MIN_VISIBLE_CANDLES, Math.min(total, wanted))
             chartRef.current.timeScale().setVisibleLogicalRange({
               from: total - visibleCount,
               to: total + rightBars,
@@ -930,6 +987,16 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
       }
       loadDataRef.current = loadData
       loadData()
+
+      // Ativos reais: quando as velas da Binance chegam (ou o cache e atualizado), reexecuta
+      // loadData caso este ativo ainda nao tenha sido carregado (transicao vazio -> com dados).
+      unsubReal = subscribeReal(() => {
+        if (dead) return
+        const sym = latest.current.symbol
+        if (isRealAsset(sym) && loadedSymbolRef.current !== sym) {
+          loadDataRef.current?.()
+        }
+      })
 
       // ===== Aplicacao de um frame (preco -> vela) =====
       // Isolada para poder ser chamada tanto pelo requestAnimationFrame (60fps suave) quanto
@@ -947,7 +1014,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
         // e sempre corresponde a escala da vela carregada (nao ha contaminacao entre ativos).
         let target = 0
         try {
-          target = multiAssetEngine.getCurrentPrice(sym as any)
+          target = chartEngineFor(sym).getCurrentPrice(sym as any)
         } catch {
           target = latest.current.currentPrice
         }
@@ -972,7 +1039,17 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
           const newTime = Math.floor(nowSec / tf) * tf
           const f = formingRef.current
           if (newTime > f.time) {
-            formingRef.current = { time: newTime, open: price, high: price, low: price, close: price }
+            // Ancora o OPEN da nova vela no preco DETERMINISTICO real do inicio da vela
+            // (mesma fonte usada nas velas historicas). Isso garante continuidade: a nova vela
+            // comeca exatamente onde a anterior fecharia no relogio, e sincroniza o preco
+            // suavizado com o tempo real (elimina o "arraste" da suavizacao entre velas).
+            let openPrice = price
+            try {
+              openPrice = chartEngineFor(sym).getPriceAtTime(sym as any, newTime) || price
+            } catch {}
+            smoothPriceRef.current = openPrice
+            prevTargetRef.current = openPrice
+            formingRef.current = { time: newTime, open: openPrice, high: openPrice, low: openPrice, close: openPrice }
           } else {
             f.close = price
             f.high = Math.max(f.high, price)
@@ -1044,6 +1121,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
       }
       if (ro) ro.disconnect()
       if (winResizeCleanup) winResizeCleanup()
+      if (unsubReal) unsubReal()
       if (chartRef.current) {
         try {
           chartRef.current.remove()
@@ -1074,6 +1152,8 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
 
   // Recarrega os dados na serie existente quando o ativo ou o timeframe muda (instantaneo).
   useEffect(() => {
+    // Garante que o poller de dados reais aponte para o ativo atual (no-op para OTC).
+    setRealActive(symbol, timeframe)
     loadDataRef.current?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, timeframe])
@@ -1506,6 +1586,58 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
                   </button>
                 )
               })}
+            </div>
+          )}
+        </div>
+
+        <div className="my-0.5 h-px w-6 bg-[#2A2E39]" />
+
+        {/* PERIODO (janela de tempo visivel, estilo IQ Option) */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Periodo do grafico"
+            aria-label="Periodo do grafico"
+            onClick={() => setShowPeriod((s) => !s)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+            style={{
+              backgroundColor: showPeriod ? "#2563eb" : "transparent",
+              color: showPeriod ? "#fff" : "#94A3B8",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </button>
+          {showPeriod && (
+            <div className="absolute left-10 bottom-0 z-40 w-64 rounded-xl border border-[#2A2E39] bg-[#0d0d0f] p-3 shadow-xl">
+              <div className="text-[13px] font-bold uppercase tracking-wide text-[#E2E8F0]">Periodo</div>
+              <div className="mt-1 mb-2.5 text-[11px] leading-snug text-[#787B86]">
+                O periodo para o qual o grafico e mostrado
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {PERIOD_OPTIONS.map((p) => {
+                  const active = periodSec === p.seconds
+                  return (
+                    <button
+                      key={p.seconds}
+                      type="button"
+                      onClick={() => {
+                        setPeriodSec(p.seconds)
+                        setShowPeriod(false)
+                      }}
+                      className="rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors"
+                      style={{
+                        backgroundColor: active ? "#2563eb" : "transparent",
+                        color: active ? "#fff" : "#CBD5E1",
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>

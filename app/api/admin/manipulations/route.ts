@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     const { data, error } = await adminClient
       .from("candle_manipulations")
       .select("*")
+      .neq("source", "HOUSE") // oculta as manipulacoes automaticas do "modo casa"
       .order("start_at", { ascending: false })
       .limit(200)
 

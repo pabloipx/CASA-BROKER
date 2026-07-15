@@ -2,6 +2,12 @@
 
 import { useEffect, useState, useRef } from "react"
 import { multiAssetEngine, OTC_ASSETS, type OTCCandle } from "@/lib/price-engine/multi-asset-engine"
+import { realMarketEngine, isRealAsset, setActive as setRealActive } from "@/lib/market-data/real-market"
+
+// Escolhe a fonte de precos: real (Binance) para Mercado Aberto, sintetico para OTC.
+function engineFor(symbol: string): any {
+  return isRealAsset(symbol) ? realMarketEngine : multiAssetEngine
+}
 
 /**
  * useGlobalOTC — feed de preco 100% CLIENT-SIDE.
@@ -39,9 +45,12 @@ export function useGlobalOTC(symbol: string, timeframe: number) {
   const key = `${validSymbol}_${timeframe}`
   if (keyRef.current !== key) {
     keyRef.current = key
-    candlesRef.current = multiAssetEngine.getCandles(validSymbol, timeframe)
-    smoothRef.current = multiAssetEngine.getCurrentPrice(validSymbol)
-    liveCandleRef.current = multiAssetEngine.getCurrentCandle(validSymbol, timeframe)
+    // Inicia/atualiza o poller de dados reais (no-op para ativos sinteticos).
+    setRealActive(validSymbol, timeframe)
+    const engine = engineFor(validSymbol)
+    candlesRef.current = engine.getCandles(validSymbol, timeframe)
+    smoothRef.current = engine.getCurrentPrice(validSymbol)
+    liveCandleRef.current = engine.getCurrentCandle(validSymbol, timeframe)
     candleStartRef.current = Math.floor(Date.now() / 1000 / timeframe) * timeframe
   }
 
@@ -57,19 +66,26 @@ export function useGlobalOTC(symbol: string, timeframe: number) {
       const now = nowMs / 1000
       const cs = Math.floor(now / timeframe) * timeframe
 
+      const engine = engineFor(validSymbol)
       // Cruzou o limite de uma nova vela: reconstroi o historico recente (barato, ~30 velas).
+      // Para ativos reais tambem reobtem sempre que o cache foi atualizado pelo poller.
       if (cs !== candleStartRef.current) {
         candleStartRef.current = cs
-        candlesRef.current = multiAssetEngine.getCandles(validSymbol, timeframe)
+        candlesRef.current = engine.getCandles(validSymbol, timeframe)
+      } else if (isRealAsset(validSymbol)) {
+        const latest = engine.getCandles(validSymbol, timeframe)
+        if (latest.length) candlesRef.current = latest
       }
 
-      const target = multiAssetEngine.getCurrentPrice(validSymbol)
+      const target = engine.getCurrentPrice(validSymbol)
       // Suavizacao leve (o motor ja e continuo, isto so remove micro-degraus entre frames).
-      if (smoothRef.current <= 0) smoothRef.current = target
-      else smoothRef.current += (target - smoothRef.current) * 0.25
+      if (target > 0) {
+        if (smoothRef.current <= 0) smoothRef.current = target
+        else smoothRef.current += (target - smoothRef.current) * 0.25
+      }
 
-      const price = Number(smoothRef.current.toFixed(asset.decimals))
-      const cc = multiAssetEngine.getCurrentCandle(validSymbol, timeframe)
+      const price = Number((smoothRef.current || 0).toFixed(asset.decimals))
+      const cc = engine.getCurrentCandle(validSymbol, timeframe)
       if (cc) {
         liveCandleRef.current = {
           time: cc.time,
@@ -127,8 +143,9 @@ export function useGlobalOTC(symbol: string, timeframe: number) {
   return {
     symbol: validSymbol,
     name: asset.name,
-    // Nunca 0: se a suavizacao ainda nao rodou, usa o preco deterministico direto.
-    price: smoothRef.current || multiAssetEngine.getCurrentPrice(validSymbol),
+    // Nunca 0 (sintetico): se a suavizacao ainda nao rodou, usa o preco direto do motor.
+    // Para ativos reais, pode ser 0 momentaneamente ate a Binance responder.
+    price: smoothRef.current || engineFor(validSymbol).getCurrentPrice(validSymbol),
     candles: allCandles,
     currentCandle: live,
     timestamp: Math.floor(Date.now() / 1000),

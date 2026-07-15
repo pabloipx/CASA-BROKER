@@ -88,9 +88,9 @@ export default function LoginPage() {
         </Link>
         <Link
           href="/auth/sign-up"
-          className="rounded-lg bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+          className="shrink-0 whitespace-nowrap rounded-lg bg-[#2563eb] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
         >
-          Registre-se — CASA BROKER
+          Registre-se<span className="hidden sm:inline"> — CASA BROKER</span>
         </Link>
       </header>
 
