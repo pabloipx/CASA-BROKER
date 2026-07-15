@@ -299,11 +299,27 @@ function buildCandle(asset: OTCAsset, startTime: number, timeframe: number): OTC
   let high = Math.max(...prices)
   let low = Math.min(...prices)
 
-  // Realistic wicks
+  // ---- Pavios (wicks) estilo IQ Option ----
+  // Combina duas escalas para dar variedade real, em vez de pavios sempre proporcionais ao corpo:
+  //  - "body": relativo ao tamanho do corpo (velas de tendencia forte ganham pavios maiores);
+  //  - "atr": um piso independente ligado a volatilidade do ativo (para dojis/indecisao terem
+  //    pavios longos mesmo com corpo minusculo, como acontece no mercado real).
   const sd = startTime * 7777
-  const body = Math.abs(close - open) || asset.pipSize * 5
-  if (srand(sd * 3) > 0.35) high = Math.max(high, Math.max(open, close) + body * (0.2 + srand(sd * 5) * 1.0))
-  if (srand(sd * 7) > 0.35) low = Math.min(low, Math.min(open, close) - body * (0.2 + srand(sd * 9) * 1.0))
+  const body = Math.abs(close - open)
+  const atr = asset.basePrice * (0.0006 + (asset.volatility / 100) * 0.0016)
+  const topBase = Math.max(open, close)
+  const botBase = Math.min(open, close)
+
+  // Pavio superior: presente na maioria das velas, tamanho misto (corpo + ATR).
+  if (srand(sd * 3) > 0.22) {
+    const wick = body * (0.15 + srand(sd * 5) * 0.9) + atr * (0.25 + srand(sd * 11) * 1.1)
+    high = Math.max(high, topBase + wick)
+  }
+  // Pavio inferior: idem, com sementes independentes (assimetria natural).
+  if (srand(sd * 7) > 0.22) {
+    const wick = body * (0.15 + srand(sd * 9) * 0.9) + atr * (0.25 + srand(sd * 13) * 1.1)
+    low = Math.min(low, botBase - wick)
+  }
 
   return {
     time: startTime,
@@ -386,6 +402,13 @@ class MultiAssetEngine {
       if (p > high) high = p
       if (p < low) low = p
     }
+    // Pequeno pavio baseado em ATR para a vela ao vivo, coerente com o candle historico
+    // (evita "salto" visual quando a vela fecha e o buildCandle adiciona os pavios finais).
+    const atr = asset.basePrice * (0.0006 + (asset.volatility / 100) * 0.0016)
+    const sd = candleStart * 7777
+    const grow = Math.min(1, elapsed / timeframe) // pavios crescem conforme a vela avanca
+    if (srand(sd * 3) > 0.22) high = Math.max(high, Math.max(openPrice, closePrice) + atr * (0.25 + srand(sd * 11) * 1.1) * grow)
+    if (srand(sd * 7) > 0.22) low = Math.min(low, Math.min(openPrice, closePrice) - atr * (0.25 + srand(sd * 13) * 1.1) * grow)
 
     return {
       time: candleStart,
