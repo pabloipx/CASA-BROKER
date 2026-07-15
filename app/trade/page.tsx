@@ -152,6 +152,8 @@ export default function TradePage() {
   const [amountInput, setAmountInput] = useState("10")
   const [showAssetModal, setShowAssetModal] = useState(false)
   const [assetSearch, setAssetSearch] = useState("")
+  // Aba de mercado no modal de ativos (estilo IQ Option): OTC ou Mercado Aberto
+  const [assetTab, setAssetTab] = useState<"otc" | "open">("otc")
   const [availableAssets, setAvailableAssets] = useState<Asset[]>(FALLBACK_ASSETS)
 
   // Carrega os ativos habilitados pelo admin
@@ -226,13 +228,27 @@ export default function TradePage() {
   const payout = selectedAsset?.payout ?? 96
   const expectedReturn = useMemo(() => Math.round(amount * (payout / 100) * 100) / 100, [amount, payout])
 
+  const isOtcAsset = (a: Asset) => a.symbol.endsWith("_OTC")
+
+  // Ao abrir o modal, posiciona na aba do ativo atualmente selecionado
+  useEffect(() => {
+    if (showAssetModal) {
+      setAssetTab(selectedSymbol.endsWith("_OTC") ? "otc" : "open")
+    }
+  }, [showAssetModal, selectedSymbol])
+
+  // Quantidade de ativos por aba (para exibir contagem e esconder aba vazia)
+  const otcCount = useMemo(() => availableAssets.filter(isOtcAsset).length, [availableAssets])
+  const openCount = useMemo(() => availableAssets.filter((a) => !isOtcAsset(a)).length, [availableAssets])
+
   const filteredAssets = useMemo(() => {
-    if (!assetSearch) return availableAssets
+    const byTab = availableAssets.filter((a) => (assetTab === "otc" ? isOtcAsset(a) : !isOtcAsset(a)))
+    if (!assetSearch) return byTab
     const search = assetSearch.toLowerCase()
-    return availableAssets.filter(
+    return byTab.filter(
       (a) => a.name.toLowerCase().includes(search) || a.symbol.toLowerCase().includes(search),
     )
-  }, [assetSearch, availableAssets])
+  }, [assetSearch, assetTab, availableAssets])
 
   const activeTradesForChart = useMemo(() => {
     return activeTrades.map((t) => ({
@@ -1262,6 +1278,36 @@ export default function TradePage() {
             </div>
 
             <div className="p-4">
+              {/* Abas de mercado (estilo IQ Option) */}
+              <div className="flex gap-1 mb-4 p-1 rounded-xl" style={{ backgroundColor: "#1a1a1e" }}>
+                <button
+                  onClick={() => setAssetTab("otc")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    assetTab === "otc" ? "bg-[#26a69a] text-white" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  OTC
+                  <span
+                    className={`text-[11px] font-medium ${assetTab === "otc" ? "text-white/80" : "text-gray-500"}`}
+                  >
+                    {otcCount}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setAssetTab("open")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    assetTab === "open" ? "bg-[#26a69a] text-white" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Mercado Aberto
+                  <span
+                    className={`text-[11px] font-medium ${assetTab === "open" ? "text-white/80" : "text-gray-500"}`}
+                  >
+                    {openCount}
+                  </span>
+                </button>
+              </div>
+
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
@@ -1275,6 +1321,13 @@ export default function TradePage() {
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-2 max-h-80">
+                {filteredAssets.length === 0 && (
+                  <p className="text-center text-gray-500 text-sm py-8">
+                    {assetTab === "open"
+                      ? "Nenhum ativo de mercado aberto disponível no momento."
+                      : "Nenhum ativo encontrado."}
+                  </p>
+                )}
                 {filteredAssets.map((asset) => (
                   <button
                     key={asset.symbol}
