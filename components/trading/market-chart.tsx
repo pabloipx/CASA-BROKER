@@ -2,7 +2,18 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { OTC_ASSETS, multiAssetEngine } from "@/lib/price-engine/multi-asset-engine"
+import {
+  realMarketEngine,
+  isRealAsset,
+  setActive as setRealActive,
+  subscribe as subscribeReal,
+} from "@/lib/market-data/real-market"
 import { sma, bollinger, macd as computeMacd, fractals } from "@/lib/indicators"
+
+// Fonte de precos do grafico: real (Binance) para Mercado Aberto, sintetico para OTC.
+function chartEngineFor(symbol: string): any {
+  return isRealAsset(symbol) ? realMarketEngine : multiAssetEngine
+}
 
 // Indicadores disponiveis no grafico
 type IndicatorKey = "ma" | "bb" | "fractal" | "macd"
@@ -722,6 +733,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
     let lastFrameAt = 0
     let watchdog: ReturnType<typeof setInterval> | null = null
     let onVisible: (() => void) | null = null
+    let unsubReal: (() => void) | null = null
 
     async function boot() {
       if (!containerRef.current || dead) return
@@ -925,10 +937,18 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
         // localmente. Isso remove a dependencia do endpoint serverless (/api/global/history),
         // cujo cold start em producao segurava o grafico vazio/travado. Resultado: o grafico
         // aparece ja carregado na entrada e a troca de ativo e imediata.
+        const real = isRealAsset(sym)
         let baseData: Candle[] = []
         try {
-          baseData = dedup(multiAssetEngine.getHistory(sym as any, tf) as Candle[])
+          baseData = dedup(chartEngineFor(sym).getHistory(sym as any, tf) as Candle[])
         } catch {}
+        // Para ativos REAIS ainda sem dados da Binance: mantem "carregando" e aguarda o
+        // poller — a subscription reexecuta loadData quando as velas reais chegarem.
+        // (Nao caimos no historico sintetico, para nao misturar dados reais com fake.)
+        if (baseData.length === 0 && real) {
+          setLoading(true)
+          return
+        }
         if (baseData.length === 0) baseData = dedup(latest.current.candles || [])
         if (dead || myToken !== loadToken || !seriesRef.current) return
 
@@ -968,6 +988,16 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
       loadDataRef.current = loadData
       loadData()
 
+      // Ativos reais: quando as velas da Binance chegam (ou o cache e atualizado), reexecuta
+      // loadData caso este ativo ainda nao tenha sido carregado (transicao vazio -> com dados).
+      unsubReal = subscribeReal(() => {
+        if (dead) return
+        const sym = latest.current.symbol
+        if (isRealAsset(sym) && loadedSymbolRef.current !== sym) {
+          loadDataRef.current?.()
+        }
+      })
+
       // ===== Aplicacao de um frame (preco -> vela) =====
       // Isolada para poder ser chamada tanto pelo requestAnimationFrame (60fps suave) quanto
       // pelo fallback de setInterval (garante atualizacao mesmo quando o rAF e estrangulado,
@@ -984,7 +1014,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
         // e sempre corresponde a escala da vela carregada (nao ha contaminacao entre ativos).
         let target = 0
         try {
-          target = multiAssetEngine.getCurrentPrice(sym as any)
+          target = chartEngineFor(sym).getCurrentPrice(sym as any)
         } catch {
           target = latest.current.currentPrice
         }
@@ -1015,7 +1045,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
             // suavizado com o tempo real (elimina o "arraste" da suavizacao entre velas).
             let openPrice = price
             try {
-              openPrice = multiAssetEngine.getPriceAtTime(sym as any, newTime) || price
+              openPrice = chartEngineFor(sym).getPriceAtTime(sym as any, newTime) || price
             } catch {}
             smoothPriceRef.current = openPrice
             prevTargetRef.current = openPrice
@@ -1091,6 +1121,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
       }
       if (ro) ro.disconnect()
       if (winResizeCleanup) winResizeCleanup()
+      if (unsubReal) unsubReal()
       if (chartRef.current) {
         try {
           chartRef.current.remove()
@@ -1121,6 +1152,8 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
 
   // Recarrega os dados na serie existente quando o ativo ou o timeframe muda (instantaneo).
   useEffect(() => {
+    // Garante que o poller de dados reais aponte para o ativo atual (no-op para OTC).
+    setRealActive(symbol, timeframe)
     loadDataRef.current?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, timeframe])

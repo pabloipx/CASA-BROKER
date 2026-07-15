@@ -76,6 +76,17 @@ export const OTC_ASSETS: OTCAsset[] = [
   { symbol: "AXP_OTC", name: "Amex OTC", basePrice: 240.0, pipSize: 0.01, volatility: 58, icon: "AXP", decimals: 2 },
   { symbol: "ADAUSD_OTC", name: "Cardano OTC", basePrice: 0.45, pipSize: 0.0001, volatility: 115, icon: "ADA", decimals: 4 },
   { symbol: "SOLUSD_OTC", name: "Solana OTC", basePrice: 145.0, pipSize: 0.01, volatility: 130, icon: "SOL", decimals: 2 },
+
+  // ===== Mercado Aberto REAL (dados ao vivo da Binance) =====
+  // basePrice e apenas um valor inicial; o preco real vem do realMarketEngine em runtime.
+  { symbol: "BTCUSD", name: "Bitcoin", basePrice: 95000, pipSize: 0.01, volatility: 150, icon: "BTC", decimals: 2 },
+  { symbol: "ETHUSD", name: "Ethereum", basePrice: 3500, pipSize: 0.01, volatility: 140, icon: "ETH", decimals: 2 },
+  { symbol: "SOLUSD", name: "Solana", basePrice: 200, pipSize: 0.01, volatility: 150, icon: "SOL", decimals: 2 },
+  { symbol: "BNBUSD", name: "BNB", basePrice: 700, pipSize: 0.01, volatility: 130, icon: "BNB", decimals: 2 },
+  { symbol: "XRPUSD", name: "XRP", basePrice: 2.2, pipSize: 0.0001, volatility: 140, icon: "XRP", decimals: 4 },
+  { symbol: "ADAUSD", name: "Cardano", basePrice: 1.0, pipSize: 0.0001, volatility: 130, icon: "ADA", decimals: 4 },
+  { symbol: "DOGEUSD", name: "Dogecoin", basePrice: 0.38, pipSize: 0.00001, volatility: 150, icon: "DOGE", decimals: 5 },
+  { symbol: "LTCUSD", name: "Litecoin", basePrice: 100, pipSize: 0.01, volatility: 130, icon: "LTC", decimals: 2 },
 ]
 
 // =============================================

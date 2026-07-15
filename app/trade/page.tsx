@@ -10,7 +10,8 @@ import { TraderIAWatermark } from "@/components/trading/trader-ia-watermark"
 import { TradeHistorySidebar } from "@/components/trading/trade-history-sidebar"
 import { useGlobalOTC } from "@/lib/hooks/use-global-otc"
 import { useManipulationSync } from "@/lib/hooks/use-manipulation-sync"
-import { multiAssetEngine } from "@/lib/price-engine/multi-asset-engine"
+  import { multiAssetEngine } from "@/lib/price-engine/multi-asset-engine"
+  import { isRealAsset, fetchRealPriceAt } from "@/lib/market-data/real-market"
 import { playCallSound, playPutSound, playWinSound, playLossSound, unlockAudio } from "@/lib/sounds"
 import Image from "next/image"
 import {
@@ -387,7 +388,15 @@ export default function TradePage() {
         const expiryMs = trade.expiry_time
           ? new Date(trade.expiry_time).getTime()
           : new Date(trade.entry_time).getTime() + (trade.timeframe || 60) * 1000
-        const enginePrice = multiAssetEngine.getPriceAtTime(trade.symbol, expiryMs / 1000)
+        // Ativos reais (Mercado Aberto): busca o preco REAL da Binance no instante da expiracao.
+        // Ativos OTC: usa o motor sintetico deterministico (mesmo do grafico).
+        let enginePrice = 0
+        if (isRealAsset(trade.symbol)) {
+          enginePrice = await fetchRealPriceAt(trade.symbol, expiryMs)
+        }
+        if (enginePrice <= 0) {
+          enginePrice = multiAssetEngine.getPriceAtTime(trade.symbol, expiryMs / 1000)
+        }
         const exitPrice = enginePrice > 0 ? enginePrice : trade.entry_price
         const isWin =
           trade.direction === "CALL" ? exitPrice > trade.entry_price : exitPrice < trade.entry_price

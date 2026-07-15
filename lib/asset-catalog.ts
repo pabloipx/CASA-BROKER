@@ -77,6 +77,16 @@ const ASSET_UI: Record<string, Omit<AssetUIInfo, "symbol">> = {
   AXP_OTC: { name: "Amex (OTC)", category: "stocks", payout: 92, logo: makeBadge("AX", "stocks") },
   ADAUSD_OTC: { name: "Cardano (OTC)", category: "crypto", payout: 90, logo: makeBadge("AD", "crypto") },
   SOLUSD_OTC: { name: "Solana (OTC)", category: "crypto", payout: 90, logo: makeBadge("SO", "crypto") },
+
+  // ===== Mercado Aberto REAL (Binance) =====
+  BTCUSD: { name: "Bitcoin", category: "crypto", payout: 87, logo: makeBadge("BTC", "crypto") },
+  ETHUSD: { name: "Ethereum", category: "crypto", payout: 87, logo: makeBadge("ETH", "crypto") },
+  SOLUSD: { name: "Solana", category: "crypto", payout: 87, logo: makeBadge("SOL", "crypto") },
+  BNBUSD: { name: "BNB", category: "crypto", payout: 87, logo: makeBadge("BNB", "crypto") },
+  XRPUSD: { name: "XRP", category: "crypto", payout: 87, logo: makeBadge("XRP", "crypto") },
+  ADAUSD: { name: "Cardano", category: "crypto", payout: 87, logo: makeBadge("ADA", "crypto") },
+  DOGEUSD: { name: "Dogecoin", category: "crypto", payout: 87, logo: makeBadge("DOGE", "crypto") },
+  LTCUSD: { name: "Litecoin", category: "crypto", payout: 87, logo: makeBadge("LTC", "crypto") },
 }
 
 const FALLBACK_LOGO = "/placeholder.svg"
