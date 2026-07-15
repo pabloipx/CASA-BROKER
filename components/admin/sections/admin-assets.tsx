@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, Search, TrendingUp, Layers } from "lucide-react"
+import { RefreshCw, Search, TrendingUp, Layers, Check } from "lucide-react"
 
 const ADMIN_TOKEN = "Admin123!"
 
@@ -13,6 +13,8 @@ interface AdminAsset {
   name: string
   category: "forex" | "crypto" | "stocks"
   payout: number
+  defaultPayout?: number
+  payoutOverride?: number | null
   logo: string
   enabled: boolean
   sortOrder: number
@@ -29,6 +31,9 @@ export function AdminAssets() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [savingSymbol, setSavingSymbol] = useState<string | null>(null)
+  // Rascunho do payout por símbolo enquanto o admin digita
+  const [payoutDraft, setPayoutDraft] = useState<Record<string, string>>({})
+  const [savingPayout, setSavingPayout] = useState<string | null>(null)
 
   const fetchAssets = async () => {
     setLoading(true)
@@ -63,6 +68,41 @@ export function AdminAssets() {
       setAssets((prev) => prev.map((a) => (a.symbol === symbol ? { ...a, enabled: !enabled } : a)))
     } finally {
       setSavingSymbol(null)
+    }
+  }
+
+  const savePayout = async (symbol: string) => {
+    const raw = payoutDraft[symbol]
+    if (raw === undefined) return
+    const value = raw.trim() === "" ? null : Number(raw)
+    if (value !== null && (!Number.isFinite(value) || value < 1 || value > 100)) return
+
+    setSavingPayout(symbol)
+    // Atualização otimista
+    setAssets((prev) =>
+      prev.map((a) =>
+        a.symbol === symbol
+          ? { ...a, payout: value ?? a.defaultPayout ?? a.payout, payoutOverride: value }
+          : a,
+      ),
+    )
+    try {
+      const res = await fetch("/api/admin/assets", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": ADMIN_TOKEN },
+        body: JSON.stringify({ symbol, payout: value }),
+      })
+      if (!res.ok) throw new Error("falha")
+      setPayoutDraft((prev) => {
+        const next = { ...prev }
+        delete next[symbol]
+        return next
+      })
+    } catch {
+      // Recarrega o estado real em caso de erro
+      fetchAssets()
+    } finally {
+      setSavingPayout(null)
     }
   }
 
@@ -126,40 +166,78 @@ export function AdminAssets() {
                 {list.map((asset) => (
                   <div
                     key={asset.symbol}
-                    className={`group relative flex items-center gap-3 overflow-hidden rounded-2xl border p-4 transition-all ${
+                    className={`group relative flex flex-col gap-3 overflow-hidden rounded-2xl border p-4 transition-all ${
                       asset.enabled
                         ? "border-white/[0.08] bg-[#0c121c]"
                         : "border-white/[0.04] bg-[#0a0e16] opacity-70"
                     }`}
                   >
-                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
-                      <Image
-                        src={asset.logo || "/placeholder.svg"}
-                        alt={asset.name}
-                        fill
-                        sizes="44px"
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">{asset.name}</p>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
-                          <TrendingUp className="h-3 w-3" />
-                          {asset.payout}%
-                        </span>
+                    <div className="flex items-center gap-3">
+                      <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
+                        <Image
+                          src={asset.logo || "/placeholder.svg"}
+                          alt={asset.name}
+                          fill
+                          sizes="44px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">{asset.name}</p>
                         <span className="text-xs text-gray-600">{asset.symbol}</span>
                       </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <Switch
+                          checked={asset.enabled}
+                          disabled={savingSymbol === asset.symbol}
+                          onCheckedChange={(v) => toggleAsset(asset.symbol, v)}
+                        />
+                        <span
+                          className={`text-[10px] font-medium ${asset.enabled ? "text-emerald-400" : "text-gray-500"}`}
+                        >
+                          {asset.enabled ? "Ativo" : "Inativo"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <Switch
-                        checked={asset.enabled}
-                        disabled={savingSymbol === asset.symbol}
-                        onCheckedChange={(v) => toggleAsset(asset.symbol, v)}
-                      />
-                      <span className={`text-[10px] font-medium ${asset.enabled ? "text-emerald-400" : "text-gray-500"}`}>
-                        {asset.enabled ? "Ativo" : "Inativo"}
-                      </span>
+
+                    {/* Payout editável pelo admin */}
+                    <div className="flex items-center gap-2 border-t border-white/[0.06] pt-3">
+                      <TrendingUp className="h-4 w-4 shrink-0 text-emerald-400" />
+                      <label className="text-xs text-gray-400">Payout</label>
+                      <div className="relative ml-auto">
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={payoutDraft[asset.symbol] ?? String(asset.payout)}
+                          onChange={(e) =>
+                            setPayoutDraft((prev) => ({ ...prev, [asset.symbol]: e.target.value }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.nativeEvent.isComposing) savePayout(asset.symbol)
+                          }}
+                          className="h-9 w-20 rounded-lg border border-white/[0.08] bg-[#0a0e16] pl-3 pr-6 text-sm font-semibold text-white outline-none focus:border-emerald-500/60"
+                        />
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                          %
+                        </span>
+                      </div>
+                      <Button
+                        size="icon"
+                        onClick={() => savePayout(asset.symbol)}
+                        disabled={
+                          payoutDraft[asset.symbol] === undefined ||
+                          payoutDraft[asset.symbol] === String(asset.payout) ||
+                          savingPayout === asset.symbol
+                        }
+                        className="h-9 w-9 shrink-0 bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40"
+                      >
+                        {savingPayout === asset.symbol ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   </div>
                 ))}
