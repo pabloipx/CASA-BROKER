@@ -61,6 +61,10 @@ export async function POST(request: Request) {
       await upsertSetting(adminClient, "crypto_deposit_enabled", String(body.crypto_deposit_enabled))
     }
 
+    if (body.house_always_wins !== undefined) {
+      await upsertSetting(adminClient, "house_always_wins", String(body.house_always_wins))
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error updating settings:", error)

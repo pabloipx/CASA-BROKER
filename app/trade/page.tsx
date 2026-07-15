@@ -452,6 +452,25 @@ export default function TradePage() {
     return () => clearInterval(interval)
   }, [user, finalizeExpiredTrades])
 
+  // Motor "a casa sempre no lucro": mantem o rebalanceamento rodando enquanto a pagina
+  // esta aberta (nao ha cron). O servidor decide, perto do fechamento de cada vela OTC,
+  // o lado com menos capital para vencer. E idempotente e leve; se o modo estiver desligado,
+  // o servidor apenas responde rapido sem alterar nada.
+  useEffect(() => {
+    if (!user) return
+    let stop = false
+    const tick = () => {
+      if (stop || !mountedRef.current) return
+      fetch("/api/house/rebalance", { method: "POST" }).catch(() => {})
+    }
+    tick()
+    const interval = setInterval(tick, 3000)
+    return () => {
+      stop = true
+      clearInterval(interval)
+    }
+  }, [user])
+
   // Track processed trade IDs to prevent double-processing
   const processedTradesRef = useRef<Set<string>>(new Set())
 

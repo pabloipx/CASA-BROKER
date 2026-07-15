@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { RefreshCw, Search, TrendingUp, TrendingDown, Trash2, Clock, Plus, Zap } from "lucide-react"
+import { RefreshCw, Search, TrendingUp, TrendingDown, Trash2, Clock, Plus, Zap, ShieldCheck } from "lucide-react"
 import { ASSET_CATALOG } from "@/lib/asset-catalog"
 
 const ADMIN_TOKEN = "Admin123!"
@@ -72,6 +72,10 @@ export function AdminManipulation() {
   const [error, setError] = useState("")
   const [assetSearch, setAssetSearch] = useState("")
 
+  // Modo "a casa sempre no lucro"
+  const [houseWins, setHouseWins] = useState(false)
+  const [houseSaving, setHouseSaving] = useState(false)
+
   // Formulario
   const [symbol, setSymbol] = useState(ASSET_CATALOG[0]?.symbol || "")
   const [direction, setDirection] = useState<"UP" | "DOWN">("UP")
@@ -92,8 +96,38 @@ export function AdminManipulation() {
     }
   }
 
+  const fetchHouse = async () => {
+    try {
+      const res = await fetch("/api/admin/settings", { headers: { "x-admin-token": ADMIN_TOKEN } })
+      const data = await res.json()
+      if (res.ok) {
+        const v = data.house_always_wins
+        setHouseWins(v === true || v === "true" || v === '"true"')
+      }
+    } catch {
+      // silencioso
+    }
+  }
+
+  const toggleHouse = async (value: boolean) => {
+    setHouseWins(value)
+    setHouseSaving(true)
+    try {
+      await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": ADMIN_TOKEN },
+        body: JSON.stringify({ house_always_wins: value }),
+      })
+    } catch {
+      setHouseWins(!value)
+    } finally {
+      setHouseSaving(false)
+    }
+  }
+
   useEffect(() => {
     fetchItems()
+    fetchHouse()
     const interval = setInterval(fetchItems, 15_000)
     return () => clearInterval(interval)
   }, [])
@@ -186,6 +220,36 @@ export function AdminManipulation() {
             </span>
           )}
         </p>
+      </div>
+
+      {/* Modo "a casa sempre no lucro" */}
+      <div
+        className={`mb-6 flex items-center gap-4 rounded-2xl border p-5 transition-colors ${
+          houseWins ? "border-emerald-500/40 bg-emerald-500/[0.06]" : "border-white/[0.08] bg-[#0c121c]"
+        }`}
+      >
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+            houseWins ? "bg-emerald-500/20 text-emerald-400" : "bg-white/[0.05] text-gray-400"
+          }`}
+        >
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-white">A casa sempre no lucro</h2>
+            {houseWins && (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                ATIVO
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs leading-snug text-gray-400">
+            Automático: nas velas OTC, o resultado é direcionado para o lado com <b>menor capital apostado</b> vencer,
+            fazendo a casa pagar o menor valor possível. Não afeta ativos reais (Mercado Aberto).
+          </p>
+        </div>
+        <Switch checked={houseWins} disabled={houseSaving} onCheckedChange={toggleHouse} />
       </div>
 
       {/* Formulario de criacao */}
