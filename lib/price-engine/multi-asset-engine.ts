@@ -172,12 +172,18 @@ export interface CandleManipulation {
   intensity?: ManipulationIntensity
 }
 
-// Multiplicador de forca por intensidade. Quanto maior, mais agressivo o movimento da vela.
-const INTENSITY_MULTIPLIER: Record<ManipulationIntensity, number> = {
-  SOFT: 1.4,
-  MEDIUM: 2.5,
-  STRONG: 4.0,
+// Ganho direcional por intensidade, em FRACAO do preco POR SEGUNDO de manipulacao.
+// Valores baixos e realistas: a vela caminha de forma constante e continua, sem teleporte.
+//  SOFT ~0.24%/min | MEDIUM ~0.48%/min | STRONG ~0.84%/min
+const DRIFT_PCT_PER_SEC: Record<ManipulationIntensity, number> = {
+  SOFT: 0.00004,
+  MEDIUM: 0.00008,
+  STRONG: 0.00014,
 }
+// Piso: garante que o resultado (Win/Loss) seja confiavel mesmo em janelas curtas.
+const DRIFT_MIN_PCT = 0.005
+// Teto: impede deslocamentos absurdos em janelas longas.
+const DRIFT_MAX_PCT = 0.02
 
 let ACTIVE_MANIPULATIONS: CandleManipulation[] = []
 
@@ -254,24 +260,26 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
   if (manip) {
     const dur = Math.max(1, manip.endMs - manip.startMs)
     const progress = Math.min(1, Math.max(0, (timestamp * 1000 - manip.startMs) / dur))
-    // smoothstep: acelera no comeco e desacelera no fim, como um movimento real.
-    const eased = progress * progress * (3 - 2 * progress)
-    const mult = INTENSITY_MULTIPLIER[manip.intensity || "MEDIUM"]
     const dir = manip.direction === "UP" ? 1 : -1
+    const rate = DRIFT_PCT_PER_SEC[manip.intensity || "MEDIUM"]
 
-    // Deslocamento direcional total (a "trilha" que a vela deve seguir ate o fim da janela).
-    const target = asset.basePrice * texturePct * 6 * mult * eased
+    // smoothstep: entra suave (sem degrau no inicio) e desacelera no fim (platô = fecho limpo).
+    const eased = progress * progress * (3 - 2 * progress)
 
-    // Mantem a textura natural do candle e adiciona recuos VISIVEIS candle a candle, mas a
-    // deriva direcional (target) sempre vence no conjunto, respeitando a direcao do admin.
-    const jitter =
-      valueNoise(timestamp / 8 + symSeed, symSeed + 313) * 0.6 +
-      valueNoise(timestamp / 3 + symSeed, symSeed + 517) * 0.4
-    const naturalSwing = asset.basePrice * texturePct * 6 * mult * 0.9 * jitter * (0.4 + 0.6 * eased)
+    // Deslocamento direcional acumulado ate aqui, como fracao do preco (piso + teto).
+    const totalPct = Math.min(DRIFT_MAX_PCT, Math.max(DRIFT_MIN_PCT, rate * (dur / 1000)))
+    const drift = dir * asset.basePrice * totalPct * eased
 
-    // Durante a manipulacao, a tendencia natural fica reduzida para nao brigar com a direcao forcada.
-    price = asset.basePrice + trendDev * 0.3 + textureDev
-    price += dir * target + naturalSwing
+    // Perto do fechamento a volatilidade CONTRAI (a textura encolhe), deixando a vela fechar
+    // limpa na direcao escolhida — comportamento tipico de mercado e garante o resultado.
+    const closeZone = progress > 0.7 ? (progress - 0.7) / 0.3 : 0
+    const textureDamp = 1 - 0.85 * (closeZone * closeZone * (3 - 2 * closeZone))
+
+    // O preco natural (tendencia + textura) e PRESERVADO e a deriva e SOMADA por cima.
+    // Assim: (1) fica continuo com o periodo anterior (sem teleporte no inicio/fim);
+    // (2) mantem recuos e velas de correcao naturais no meio do caminho;
+    // (3) a deriva monotonica garante a direcao final configurada pelo admin.
+    price = asset.basePrice + trendDev + textureDev * textureDamp + drift
 
     if (price <= 0) price = asset.basePrice * 0.5
   }
