@@ -1553,7 +1553,7 @@ function ChartCore({ candles, currentPrice, activeTrades = [], timeframe, symbol
             </svg>
           </button>
           {showIndicators && (
-            <div className="absolute left-10 top-0 z-40 w-56 rounded-xl border border-[#2A2E39] bg-[#0d0d0f] p-2 shadow-xl">
+            <div className="absolute left-10 bottom-0 z-40 w-56 rounded-xl border border-[#2A2E39] bg-[#0d0d0f] p-2 shadow-xl">
               <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-[#787B86]">
                 Indicadores
               </div>

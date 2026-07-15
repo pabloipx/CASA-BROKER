@@ -15,7 +15,7 @@ export async function GET() {
 
     const { data, error } = await adminClient
       .from("candle_manipulations")
-      .select("symbol, direction, intensity, start_at, end_at")
+      .select("symbol, direction, intensity, close_shape, start_at, end_at")
       .eq("active", true)
       .gte("end_at", nowIso)
       .order("start_at", { ascending: true })
@@ -26,6 +26,7 @@ export async function GET() {
       symbol: m.symbol,
       direction: m.direction,
       intensity: m.intensity || "MEDIUM",
+      closeShape: m.close_shape || "AUTO",
       startMs: new Date(m.start_at).getTime(),
       endMs: new Date(m.end_at).getTime(),
     }))

@@ -44,6 +44,8 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { symbol, direction, start_at, end_at } = body
     const intensity = body.intensity || "MEDIUM"
+    const closeShape = body.close_shape || "AUTO"
+    const VALID_SHAPES = ["AUTO", "DOJI", "FULL", "HAMMER", "SHOOTING_STAR", "ENGULFING"]
 
     if (typeof symbol !== "string" || !ASSET_CATALOG.some((a) => a.symbol === symbol)) {
       return NextResponse.json({ error: "Ativo inválido" }, { status: 400 })
@@ -53,6 +55,9 @@ export async function POST(request: Request) {
     }
     if (!["SOFT", "MEDIUM", "STRONG"].includes(intensity)) {
       return NextResponse.json({ error: "Intensidade inválida" }, { status: 400 })
+    }
+    if (!VALID_SHAPES.includes(closeShape)) {
+      return NextResponse.json({ error: "Formato de vela inválido" }, { status: 400 })
     }
     const start = new Date(start_at)
     const end = new Date(end_at)
@@ -67,6 +72,7 @@ export async function POST(request: Request) {
         symbol,
         direction,
         intensity,
+        close_shape: closeShape,
         start_at: start.toISOString(),
         end_at: end.toISOString(),
         active: true,

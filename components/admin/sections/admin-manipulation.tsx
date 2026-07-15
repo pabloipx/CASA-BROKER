@@ -10,12 +10,14 @@ import { ASSET_CATALOG } from "@/lib/asset-catalog"
 const ADMIN_TOKEN = "Admin123!"
 
 type Intensity = "SOFT" | "MEDIUM" | "STRONG"
+type CandleShape = "AUTO" | "DOJI" | "FULL" | "HAMMER" | "SHOOTING_STAR" | "ENGULFING"
 
 interface Manipulation {
   id: string
   symbol: string
   direction: "UP" | "DOWN"
   intensity: Intensity
+  close_shape?: CandleShape
   start_at: string
   end_at: string
   active: boolean
@@ -38,6 +40,20 @@ const INTENSITY_OPTIONS: { value: Intensity; label: string; desc: string }[] = [
 
 function intensityLabel(v?: Intensity) {
   return INTENSITY_OPTIONS.find((o) => o.value === (v || "MEDIUM"))?.label || "Médio"
+}
+
+// Formato da VELA DE FECHAMENTO da janela (apenas visual; a cor segue a direção).
+const SHAPE_OPTIONS: { value: CandleShape; label: string; desc: string }[] = [
+  { value: "AUTO", label: "Automático", desc: "Vela natural" },
+  { value: "DOJI", label: "Doji", desc: "Corpo mínimo, pavios dos 2 lados" },
+  { value: "FULL", label: "Cheia", desc: "Corpo grande, quase sem pavio" },
+  { value: "HAMMER", label: "Martelo", desc: "Pavio inferior longo" },
+  { value: "SHOOTING_STAR", label: "Estrela cadente", desc: "Pavio superior longo" },
+  { value: "ENGULFING", label: "Engolfo", desc: "Corpo grande que engole" },
+]
+
+function shapeLabel(v?: CandleShape) {
+  return SHAPE_OPTIONS.find((o) => o.value === (v || "AUTO"))?.label || "Automático"
 }
 
 // datetime-local usa horario LOCAL; convertemos considerando o offset do fuso.
@@ -80,6 +96,7 @@ export function AdminManipulation() {
   const [symbol, setSymbol] = useState(ASSET_CATALOG[0]?.symbol || "")
   const [direction, setDirection] = useState<"UP" | "DOWN">("UP")
   const [intensity, setIntensity] = useState<Intensity>("MEDIUM")
+  const [closeShape, setCloseShape] = useState<CandleShape>("AUTO")
   const [startAt, setStartAt] = useState(() => toLocalInputValue(new Date(Date.now() + 60_000)))
   const [durationSeconds, setDurationSeconds] = useState(60)
 
@@ -145,6 +162,7 @@ export function AdminManipulation() {
           symbol,
           direction,
           intensity,
+          close_shape: closeShape,
           start_at: start.toISOString(),
           end_at: end.toISOString(),
         }),
@@ -342,6 +360,29 @@ export function AdminManipulation() {
           ))}
         </div>
 
+        {/* Formato da vela de fechamento */}
+        <label className="mb-1.5 block text-xs font-medium text-gray-400">
+          Formato da vela final <span className="text-gray-600">(a cor sempre segue a direção)</span>
+        </label>
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {SHAPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setCloseShape(opt.value)}
+              className={`flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-all ${
+                closeShape === opt.value
+                  ? "border-blue-500 bg-blue-500/10"
+                  : "border-white/[0.06] bg-[#0a0e16] hover:border-white/20"
+              }`}
+            >
+              <span className={`text-sm font-semibold ${closeShape === opt.value ? "text-white" : "text-gray-400"}`}>
+                {opt.label}
+              </span>
+              <span className="text-[10px] leading-tight text-gray-500">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Horario de inicio */}
         <label className="mb-1.5 block text-xs font-medium text-gray-400">Horário de início</label>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row">
@@ -454,6 +495,11 @@ export function AdminManipulation() {
                     <span className="inline-flex items-center gap-0.5 rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-bold text-blue-400">
                       <Zap className="h-3 w-3" /> {intensityLabel(m.intensity)}
                     </span>
+                    {m.close_shape && m.close_shape !== "AUTO" && (
+                      <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] font-bold text-purple-300">
+                        {shapeLabel(m.close_shape)}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 truncate text-xs text-gray-500">
                     {fmt(m.start_at)} → {fmt(m.end_at)}

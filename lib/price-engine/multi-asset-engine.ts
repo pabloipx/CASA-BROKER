@@ -164,20 +164,36 @@ const TEXTURE_OCTAVE_TOTAL = TEXTURE_OCTAVES.reduce((s, o) => s + o.amp, 0)
 // a direcao configurada automaticamente.
 export type ManipulationIntensity = "SOFT" | "MEDIUM" | "STRONG"
 
+// Formato da vela de FECHAMENTO da janela de manipulacao (apenas visual/cosmetico).
+//  AUTO          -> vela natural (nenhum formato forcado)
+//  DOJI          -> corpo minimo, pavios dos dois lados (indecisao)
+//  FULL          -> corpo cheio (marubozu), quase sem pavio
+//  HAMMER        -> martelo: corpo pequeno no topo, pavio inferior longo
+//  SHOOTING_STAR -> estrela cadente: corpo pequeno embaixo, pavio superior longo
+//  ENGULFING     -> engolfo: corpo grande
+export type CandleShape = "AUTO" | "DOJI" | "FULL" | "HAMMER" | "SHOOTING_STAR" | "ENGULFING"
+
 export interface CandleManipulation {
   symbol: string
   direction: "UP" | "DOWN"
   startMs: number
   endMs: number
   intensity?: ManipulationIntensity
+  closeShape?: CandleShape
 }
 
-// Multiplicador de forca por intensidade. Quanto maior, mais agressivo o movimento da vela.
-const INTENSITY_MULTIPLIER: Record<ManipulationIntensity, number> = {
-  SOFT: 1.4,
-  MEDIUM: 2.5,
-  STRONG: 4.0,
+// Ganho direcional por intensidade, em FRACAO do preco POR SEGUNDO de manipulacao.
+// Valores baixos e realistas: a vela caminha de forma constante e continua, sem teleporte.
+//  SOFT ~0.24%/min | MEDIUM ~0.48%/min | STRONG ~0.84%/min
+const DRIFT_PCT_PER_SEC: Record<ManipulationIntensity, number> = {
+  SOFT: 0.00004,
+  MEDIUM: 0.00008,
+  STRONG: 0.00014,
 }
+// Piso: garante que o resultado (Win/Loss) seja confiavel mesmo em janelas curtas.
+const DRIFT_MIN_PCT = 0.005
+// Teto: impede deslocamentos absurdos em janelas longas.
+const DRIFT_MAX_PCT = 0.02
 
 let ACTIVE_MANIPULATIONS: CandleManipulation[] = []
 
@@ -254,30 +270,95 @@ function getLivePrice(asset: OTCAsset, timestamp: number): number {
   if (manip) {
     const dur = Math.max(1, manip.endMs - manip.startMs)
     const progress = Math.min(1, Math.max(0, (timestamp * 1000 - manip.startMs) / dur))
-    // smoothstep: acelera no comeco e desacelera no fim, como um movimento real.
-    const eased = progress * progress * (3 - 2 * progress)
-    const mult = INTENSITY_MULTIPLIER[manip.intensity || "MEDIUM"]
     const dir = manip.direction === "UP" ? 1 : -1
+    const rate = DRIFT_PCT_PER_SEC[manip.intensity || "MEDIUM"]
 
-    // Deslocamento direcional total (a "trilha" que a vela deve seguir ate o fim da janela).
-    const target = asset.basePrice * texturePct * 6 * mult * eased
+    // smoothstep: entra suave (sem degrau no inicio) e desacelera no fim (platô = fecho limpo).
+    const eased = progress * progress * (3 - 2 * progress)
 
-    // Mantem a textura natural do candle e adiciona recuos VISIVEIS candle a candle, mas a
-    // deriva direcional (target) sempre vence no conjunto, respeitando a direcao do admin.
-    const jitter =
-      valueNoise(timestamp / 8 + symSeed, symSeed + 313) * 0.6 +
-      valueNoise(timestamp / 3 + symSeed, symSeed + 517) * 0.4
-    const naturalSwing = asset.basePrice * texturePct * 6 * mult * 0.9 * jitter * (0.4 + 0.6 * eased)
+    // Deslocamento direcional acumulado ate aqui, como fracao do preco (piso + teto).
+    const totalPct = Math.min(DRIFT_MAX_PCT, Math.max(DRIFT_MIN_PCT, rate * (dur / 1000)))
+    const drift = dir * asset.basePrice * totalPct * eased
 
-    // Durante a manipulacao, a tendencia natural fica reduzida para nao brigar com a direcao forcada.
-    price = asset.basePrice + trendDev * 0.3 + textureDev
-    price += dir * target + naturalSwing
+    // Perto do fechamento a volatilidade CONTRAI (a textura encolhe), deixando a vela fechar
+    // limpa na direcao escolhida — comportamento tipico de mercado e garante o resultado.
+    const closeZone = progress > 0.7 ? (progress - 0.7) / 0.3 : 0
+    const textureDamp = 1 - 0.85 * (closeZone * closeZone * (3 - 2 * closeZone))
+
+    // O preco natural (tendencia + textura) e PRESERVADO e a deriva e SOMADA por cima.
+    // Assim: (1) fica continuo com o periodo anterior (sem teleporte no inicio/fim);
+    // (2) mantem recuos e velas de correcao naturais no meio do caminho;
+    // (3) a deriva monotonica garante a direcao final configurada pelo admin.
+    price = asset.basePrice + trendDev + textureDev * textureDamp + drift
 
     if (price <= 0) price = asset.basePrice * 0.5
   }
 
   const prec = asset.decimals
   return Number(price.toFixed(prec))
+}
+
+// =============================================
+// RESHAPE DA VELA DE FECHAMENTO (formato escolhido pelo admin)
+// =============================================
+// Reescreve OHLC para o formato pedido, MANTENDO o `close` ancorado no preco real
+// (para nao dar "salto" e para o resultado Win/Loss seguir intacto) e a COR seguindo
+// a direcao da manipulacao (UP = verde, DOWN = vermelho). So muda corpo e pavios.
+function reshapeClosingCandle(
+  base: { open: number; high: number; low: number; close: number },
+  asset: OTCAsset,
+  startTime: number,
+  dir: 1 | -1,
+  shape: CandleShape,
+): { open: number; high: number; low: number; close: number } {
+  const close = base.close
+  // Unidade tipica de corpo, proporcional a volatilidade do ativo.
+  const unit = asset.basePrice * (0.0015 + (asset.volatility / 100) * 0.004)
+  const up = dir > 0
+  const r = srand(startTime * 4441)
+  const r2 = srand(startTime * 991 + 7)
+
+  let bodyMag: number
+  let upWick: number
+  let lowWick: number
+
+  switch (shape) {
+    case "DOJI":
+      bodyMag = unit * 0.08
+      upWick = unit * (0.8 + r * 0.6)
+      lowWick = unit * (0.8 + r2 * 0.6)
+      break
+    case "FULL": // marubozu
+      bodyMag = unit * (1.6 + r * 0.6)
+      upWick = unit * 0.05
+      lowWick = unit * 0.05
+      break
+    case "HAMMER":
+      bodyMag = unit * (0.45 + r * 0.2)
+      upWick = unit * (0.08 + r2 * 0.12)
+      lowWick = unit * (1.8 + r * 0.7)
+      break
+    case "SHOOTING_STAR":
+      bodyMag = unit * (0.45 + r * 0.2)
+      upWick = unit * (1.8 + r * 0.7)
+      lowWick = unit * (0.08 + r2 * 0.12)
+      break
+    case "ENGULFING":
+      bodyMag = unit * (2.0 + r * 0.8)
+      upWick = unit * (0.1 + r2 * 0.15)
+      lowWick = unit * (0.1 + r * 0.15)
+      break
+    default:
+      return base
+  }
+
+  // Corpo com a cor correta: no UP o open fica ABAIXO do close (verde); no DOWN, acima.
+  const open = up ? close - bodyMag : close + bodyMag
+  const top = Math.max(open, close)
+  const bot = Math.min(open, close)
+  const high = top + upWick
+  const low = bot - lowWick
+  return { open, high, low, close }
 }
 
 // =============================================
@@ -294,10 +375,33 @@ function buildCandle(asset: OTCAsset, startTime: number, timeframe: number): OTC
     prices.push(getLivePrice(asset, t))
   }
 
-  const open = prices[0]
-  const close = prices[prices.length - 1]
+  let open = prices[0]
+  let close = prices[prices.length - 1]
   let high = Math.max(...prices)
   let low = Math.min(...prices)
+
+  // ---- Formato forcado na VELA DE FECHAMENTO da janela de manipulacao ----
+  // Se esta vela e a ultima da janela (o instante `endMs` cai dentro dela) e o admin
+  // escolheu um formato, reescrevemos a vela para esse formato (so a ultima).
+  if (ACTIVE_MANIPULATIONS.length) {
+    const manip = findManipulation(asset.symbol, startTime * 1000 + (timeframe * 1000) / 2)
+    if (manip && manip.closeShape && manip.closeShape !== "AUTO") {
+      const endSec = manip.endMs / 1000
+      const isClosingCandle = endSec >= startTime && endSec < startTime + timeframe
+      if (isClosingCandle) {
+        const dir = manip.direction === "UP" ? 1 : -1
+        const shaped = reshapeClosingCandle({ open, high, low, close }, asset, startTime, dir as 1 | -1, manip.closeShape)
+        const prec = asset.decimals
+        return {
+          time: startTime,
+          open: Number(shaped.open.toFixed(prec)),
+          high: Number(shaped.high.toFixed(prec)),
+          low: Number(shaped.low.toFixed(prec)),
+          close: Number(shaped.close.toFixed(prec)),
+        }
+      }
+    }
+  }
 
   // ---- Pavios (wicks) estilo IQ Option ----
   // Combina duas escalas para dar variedade real, em vez de pavios sempre proporcionais ao corpo:

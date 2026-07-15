@@ -8,7 +8,9 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   try {
     const adminClient = createAdminClient()
-    const { data: rows, error } = await adminClient.from("asset_settings").select("symbol, enabled, sort_order")
+    const { data: rows, error } = await adminClient
+      .from("asset_settings")
+      .select("symbol, enabled, sort_order, payout_override")
     if (error) throw error
 
     const settings = new Map((rows || []).map((r: any) => [r.symbol, r]))
@@ -17,7 +19,8 @@ export async function GET() {
       symbol: a.symbol,
       name: a.name,
       category: a.category,
-      payout: a.payout,
+      // payout customizado pelo admin quando definido, senão o padrão do catálogo
+      payout: settings.get(a.symbol)?.payout_override ?? a.payout,
       logo: a.logo,
       sortOrder: settings.get(a.symbol)?.sort_order ?? index,
     }))
