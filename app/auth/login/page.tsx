@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isTestLoading, setIsTestLoading] = useState(false)
   const router = useRouter()
 
   // Redireciona em segundo plano se já houver sessão, sem bloquear o render do formulário
@@ -69,6 +70,39 @@ export default function LoginPage() {
       const message = err instanceof Error ? err.message : "Erro ao fazer login"
       setError(message)
       setIsLoading(false)
+    }
+  }
+
+  const handleTestLogin = async () => {
+    if (isLoading || isTestLoading) return
+
+    setIsTestLoading(true)
+    setError(null)
+
+    try {
+      // Garante que a conta de teste exista (cria/normaliza no servidor)
+      const res = await fetch("/api/auth/test-login", { method: "POST" })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Não foi possível preparar a conta de teste")
+      }
+
+      const supabase = createClient()
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+
+      if (signInError) {
+        throw new Error(signInError.message)
+      }
+
+      router.push("/trade")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao entrar com a conta de teste"
+      setError(message)
+      setIsTestLoading(false)
     }
   }
 
@@ -149,6 +183,26 @@ export default function LoginPage() {
                 "Entrar"
               )}
             </button>
+
+            {/* Login de teste */}
+            <button
+              type="button"
+              onClick={handleTestLogin}
+              disabled={isLoading || isTestLoading}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-base font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isTestLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                "Entrar com conta teste"
+              )}
+            </button>
+            <p className="text-center text-xs text-gray-400">
+              Conta de teste: teste@teste.com / Teste123!
+            </p>
           </form>
 
           {/* Links */}
